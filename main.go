@@ -19,7 +19,7 @@ const targetDir = "./backups"
 
 // remember timestamp for all backups
 // it is easy to sort/retain when all backups in one iteration use one timestamp
-var backupTimestamp = time.Now().Format("2006_01_02_150405")
+var backupTimestamp = time.Now().Format("20060102150405")
 
 type BackupConfig struct {
 	// postgres://username:password@host:port/dbname
@@ -87,8 +87,8 @@ func dumpDatabase(backupConfig BackupConfig) error {
 		return err
 	}
 
-	// layout: host_port/datetime_dbname
-	hostPortPath := filepath.Join(targetDir, fmt.Sprintf("%s_%s", db.Host, db.Port))
+	// layout: host-port/datetime_dbname
+	hostPortPath := filepath.Join(targetDir, fmt.Sprintf("%s-%s", db.Host, db.Port))
 	// need in case backup is failed
 	tmpDest := filepath.Join(hostPortPath, fmt.Sprintf("%s_%s.dirty", backupTimestamp, db.Dbname))
 	// rename to target, if everything is success
