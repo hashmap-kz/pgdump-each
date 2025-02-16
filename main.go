@@ -17,6 +17,12 @@ type Database struct {
 	User   string
 	Host   string
 	Port   string
+
+	// optional filters
+	Schemas        []string
+	ExcludeSchemas []string
+	Tables         []string
+	ExcludeTables  []string
 }
 
 // dumpDatabase executes pg_dump for a given database.
@@ -36,6 +42,8 @@ func dumpDatabase(db Database) error {
 		return fmt.Errorf("cannot create target dir %s, cause: %w", tmpDest, err)
 	}
 
+	// prepare args with optional filters
+
 	args := []string{
 		"--host=" + db.Host,
 		"--port=" + db.Port,
@@ -49,6 +57,29 @@ func dumpDatabase(db Database) error {
 		"--verbose",
 		"--verbose", // yes, twice
 	}
+	if len(db.Schemas) > 0 {
+		for _, arg := range db.Schemas {
+			args = append(args, "--schema="+arg)
+		}
+	}
+	if len(db.ExcludeSchemas) > 0 {
+		for _, arg := range db.ExcludeSchemas {
+			args = append(args, "--exclude-schema="+arg)
+		}
+	}
+	if len(db.Tables) > 0 {
+		for _, arg := range db.Tables {
+			args = append(args, "--table="+arg)
+		}
+	}
+	if len(db.ExcludeTables) > 0 {
+		for _, arg := range db.ExcludeTables {
+			args = append(args, "--exclude-table="+arg)
+		}
+	}
+
+	// execute dump CMD
+
 	cmd := exec.Command("pg_dump", args...)
 
 	var stderr bytes.Buffer
@@ -64,11 +95,10 @@ func dumpDatabase(db Database) error {
 	// if everything is ok, just rename a temporary dir into the target one
 	err = os.Rename(tmpDest, okDest)
 	if err != nil {
-		err1 := fmt.Errorf("cannot rename %s to %s, cause: %w\n", tmpDest, okDest, err)
-		fmt.Println(err1)
+		return fmt.Errorf("cannot rename %s to %s, cause: %w\n", tmpDest, okDest, err)
 	}
 
-	fmt.Printf("Backup completed: %s -> %s\n", db.DBName, okDest)
+	fmt.Printf("Backup completed: %s -> %s\n", db.DBName, filepath.ToSlash(okDest))
 	return nil
 }
 
@@ -87,9 +117,24 @@ func main() {
 
 	// Define your databases here
 	databases := []Database{
-		{"keycloak_base", "postgres", "10.40.240.189", "5432"},
-		{"bookstore", "postgres", "localhost", "5432"},
-		{"vault", "postgres", "10.40.240.165", "30201"},
+		{
+			DBName: "keycloak_base",
+			User:   "postgres",
+			Host:   "10.40.240.189",
+			Port:   "5432",
+		},
+		{
+			DBName: "bookstore",
+			User:   "postgres",
+			Host:   "localhost",
+			Port:   "5432",
+		},
+		{
+			DBName: "vault",
+			User:   "postgres",
+			Host:   "10.40.240.165",
+			Port:   "30201",
+		},
 	}
 
 	// Number of concurrent workers
