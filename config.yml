@@ -1,0 +1,50 @@
+dest: "/.backups"
+
+# pg_dump
+dump:
+  jobs: 2
+  dbs:
+    - conn: "postgres://postgres:${MY_PG_PASS}@localhost:5432/bookstore?connect_timeout=5&sslmode=disable"
+      schemas: [ ]
+      excludeSchemas: [ ]
+      tables: [ ]
+      excludeTables: [ ]
+    - conn: "postgres://postgres:postgres@10.40.240.189:5432/keycloak_base"
+    - conn: "postgres://postgres:postgres@10.40.240.165:30201/vault"
+
+# pg_basebackup
+base:
+  - conn: "postgres://postgres:postgres@localhost:5432/bookstore?connect_timeout=5&sslmode=disable"
+
+retention:
+  enable: true
+  period: 5d
+  keepLast: 2
+
+upload:
+  retryAttempts: 2
+  jobs: 8
+  sftp:
+    enable: true
+    host: "10.40.240.194"
+    port: "22"
+    user: "ansible"
+    pkeyPath: "${SSH_PKEY}"
+    passphrase: ""
+    dest: "/home/ansible/backups"
+    # if set, all local rules will also be applied to remote storage
+    # it means, that remote will be synced with local
+    keepSyncedWithLocalRetention: true
+  s3:
+    enable: true
+    endpointUrl: "${AWS_ENDPOINT_URL}"
+    accessKeyId: "${AWS_ACCESS_KEY_ID}"
+    secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
+    bucket: "tmp"
+    region: "main"
+    usePathStyle: true
+    disableSSL: true
+    prefix: ""
+    # if set, all local rules will also be applied to remote storage
+    # it means, that remote will be synced with local
+    keepSyncedWithLocalRetention: true
