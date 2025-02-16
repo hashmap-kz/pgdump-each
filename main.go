@@ -37,7 +37,7 @@ func dumpDatabase(db Database) error {
 	// rename to target, if everything is success
 	okDest := filepath.Join(hostPortPath, fmt.Sprintf("%s_%s.dmp", ts, db.DBName))
 	// prepare directory
-	err = os.MkdirAll(tmpDest, 0755)
+	err = os.MkdirAll(tmpDest, 0o755)
 	if err != nil {
 		return fmt.Errorf("cannot create target dir %s, cause: %w", tmpDest, err)
 	}
@@ -79,15 +79,11 @@ func dumpDatabase(db Database) error {
 	}
 
 	// execute dump CMD
-
-	cmd := exec.Command("pg_dump", args...)
-
 	var stderr bytes.Buffer
+	cmd := exec.Command("pg_dump", args...)
 	cmd.Stderr = &stderr
-
 	// Set environment variables for authentication
 	cmd.Env = append(cmd.Env, "PGPASSWORD=postgres") // Replace with a secure method
-
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to dump %s: %v - %s", db.DBName, err, stderr.String())
 	}
@@ -114,7 +110,6 @@ func worker(databases <-chan Database, wg *sync.WaitGroup) {
 }
 
 func main() {
-
 	// Define your databases here
 	databases := []Database{
 		{
