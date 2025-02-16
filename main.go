@@ -178,6 +178,11 @@ func main() {
 		},
 	}
 
+	// TODO: before concurrent tasks
+	// 1) remove all '*.dirty' dirs, if any
+	// 2) process purge jobs
+	//
+
 	// Number of concurrent workers
 	workerCount := 3
 	dbChan := make(chan BackupConfig, len(databases))
