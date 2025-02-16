@@ -87,12 +87,12 @@ func dumpDatabase(backupConfig BackupConfig) error {
 		return err
 	}
 
-	// layout: host-port/datetime_dbname
+	// layout: host-port/datetime-dbname
 	hostPortPath := filepath.Join(targetDir, fmt.Sprintf("%s-%s", db.Host, db.Port))
 	// need in case backup is failed
-	tmpDest := filepath.Join(hostPortPath, fmt.Sprintf("%s_%s.dirty", backupTimestamp, db.Dbname))
+	tmpDest := filepath.Join(hostPortPath, fmt.Sprintf("%s-%s.dirty", backupTimestamp, db.Dbname))
 	// rename to target, if everything is success
-	okDest := filepath.Join(hostPortPath, fmt.Sprintf("%s_%s.dmp", backupTimestamp, db.Dbname))
+	okDest := filepath.Join(hostPortPath, fmt.Sprintf("%s-%s.dmp", backupTimestamp, db.Dbname))
 	// prepare directory
 	err = os.MkdirAll(tmpDest, 0o755)
 	if err != nil {
