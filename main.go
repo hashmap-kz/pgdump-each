@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -79,13 +80,14 @@ func dumpDatabase(db Database) error {
 	}
 
 	// execute dump CMD
-	var stderr bytes.Buffer
+	var stdoutBuf, stderrBuf bytes.Buffer
 	cmd := exec.Command("pg_dump", args...)
-	cmd.Stderr = &stderr
+	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
+	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
 	// Set environment variables for authentication
 	cmd.Env = append(cmd.Env, "PGPASSWORD=postgres") // Replace with a secure method
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to dump %s: %v - %s", db.DBName, err, stderr.String())
+		return fmt.Errorf("failed to dump %s: %v - %s", db.DBName, err, stderrBuf.String())
 	}
 
 	// if everything is ok, just rename a temporary dir into the target one
