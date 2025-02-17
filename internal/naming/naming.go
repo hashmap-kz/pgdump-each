@@ -2,6 +2,8 @@ package naming
 
 import "regexp"
 
+const TimestampLayout = "20060102150405"
+
 var (
 	BackupDmpRegex = regexp.MustCompile(`^(\d{14})-([a-zA-Z0-9_-]+)\.dmp$`)
 

@@ -3,6 +3,7 @@ package backup
 import (
 	"bytes"
 	"fmt"
+	"gopgdump/internal/naming"
 	"io"
 	"log/slog"
 	"os"
@@ -17,14 +18,15 @@ import (
 
 // remember timestamp for all backups
 // it is easy to sort/retain when all backups in one iteration use one timestamp
-var backupTimestamp = time.Now().Format("20060102150405")
+var backupTimestamp = time.Now().Format(naming.TimestampLayout)
 
 func RunBackup() {
 	cfg := config.Cfg()
+	databases := cfg.Dump.DBS
 
 	// Number of concurrent workers
 	workerCount := 3
-	dbChan := make(chan config.DatabaseConfig, len(cfg.Dump.DBS))
+	dbChan := make(chan config.DatabaseConfig, len(databases))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
@@ -34,7 +36,7 @@ func RunBackup() {
 	}
 
 	// Send databases to the worker channel
-	for _, db := range cfg.Dump.DBS {
+	for _, db := range databases {
 		dbChan <- db
 	}
 
