@@ -32,6 +32,8 @@ func main() {
 		slog.Error("clean", slog.String("err", err.Error()))
 	}
 
-	backup.RunBackup()
+	backup.RunPgDumps()
+	backup.RunPgBasebackups()
+
 	fmt.Println("All backups completed.")
 }

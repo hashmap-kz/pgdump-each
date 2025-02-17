@@ -10,29 +10,27 @@ import (
 	"path/filepath"
 	"sync"
 
+	"gopgdump/config"
 	"gopgdump/internal/naming"
 	"gopgdump/internal/ts"
-
-	"gopgdump/config"
-	"gopgdump/internal/util"
 )
 
-func RunBackup() {
+func RunPgBasebackups() {
 	cfg := config.Cfg()
-	databases := cfg.Dump.DBS
+	databases := cfg.Base.DBS
 
 	// Number of concurrent workers
 	workerCount := 3
-	dbChan := make(chan config.PgDumpDatabaseConfig, len(databases))
+	dbChan := make(chan config.PgBaseBackupDatabaseConfig, len(databases))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
-		go worker(dbChan, &wg)
+		go pgBasebackupWorker(dbChan, &wg)
 	}
 
-	// Send databases to the worker channel
+	// Send databases to the pgDumpWorker channel
 	for _, db := range databases {
 		dbChan <- db
 	}
@@ -42,49 +40,36 @@ func RunBackup() {
 	wg.Wait()
 }
 
-// worker handles executing pg_dump tasks.
-func worker(databases <-chan config.PgDumpDatabaseConfig, wg *sync.WaitGroup) {
+// pgDumpWorker handles executing pg_dump tasks.
+func pgBasebackupWorker(databases <-chan config.PgBaseBackupDatabaseConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for db := range databases {
-		if err := dumpDatabase(db); err != nil {
+		if err := dumpCluster(db); err != nil {
 			// log errors, and continue, don't care about,
 			// the dump is performed in a tmp (*.dirty) directory
 			slog.Error("backup",
 				slog.String("status", "error"),
 				slog.String("err", err.Error()),
 				slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
-				slog.String("dbname", db.Dbname),
 			)
 		}
 	}
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(db config.PgDumpDatabaseConfig) error {
+func dumpCluster(db config.PgBaseBackupDatabaseConfig) error {
 	var err error
 	cfg := config.Cfg()
 
-	// set jobs
-	jobs := cfg.Dump.Jobs
-	if jobs <= 0 || jobs >= 32 {
-		jobs = 2
-	}
-
 	slog.Info("backup",
 		slog.String("status", "run"),
+		slog.String("mode", "pg_basebackup"),
 		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
-		slog.String("dbname", db.Dbname),
-		slog.Int("jobs", jobs),
 	)
 
-	connStr, err := util.CreateConnStr(db)
-	if err != nil {
-		return err
-	}
-
 	// layout: datetime--host-port--dbname.dmp
-	dumpName := fmt.Sprintf("%s--%s-%d--%s", ts.WorkingTimestamp, db.Host, db.Port, db.Dbname)
+	dumpName := fmt.Sprintf("%s--%s-%d--pg_basebackup", ts.WorkingTimestamp, db.Host, db.Port)
 	// need in case backup is failed
 	tmpDest := filepath.Join(cfg.Dest, naming.PgDumpPath, dumpName+".dirty")
 	// rename to target, if everything is success
@@ -98,39 +83,22 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 	// prepare args with optional filters
 
 	args := []string{
-		"--dbname=" + connStr,
-		"--file=" + tmpDest,
-		"--format=directory",
-		"--jobs=" + fmt.Sprintf("%d", jobs),
-		"--compress=1",
+		"--host=" + db.Host,
+		"--port=" + fmt.Sprintf("%d", db.Port),
+		"--username=" + db.Username,
+		"--pgdata=" + tmpDest,
+		"--checkpoint=fast",
+		"--progress",
 		"--no-password",
+		"--format=tar",
+		"--gzip",
 		"--verbose",
 		"--verbose", // yes, twice
-	}
-	if len(db.Schemas) > 0 {
-		for _, arg := range db.Schemas {
-			args = append(args, "--schema="+arg)
-		}
-	}
-	if len(db.ExcludeSchemas) > 0 {
-		for _, arg := range db.ExcludeSchemas {
-			args = append(args, "--exclude-schema="+arg)
-		}
-	}
-	if len(db.Tables) > 0 {
-		for _, arg := range db.Tables {
-			args = append(args, "--table="+arg)
-		}
-	}
-	if len(db.ExcludeTables) > 0 {
-		for _, arg := range db.ExcludeTables {
-			args = append(args, "--exclude-table="+arg)
-		}
 	}
 
 	// execute dump CMD
 	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd := exec.Command("pg_dump", args...)
+	cmd := exec.Command("pg_basebackup", args...)
 	if cfg.PrintLogs {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
 		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
@@ -140,7 +108,11 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 	// Set environment variables for authentication
 	cmd.Env = append(cmd.Env, fmt.Sprintf("PGPASSWORD=%s", db.Password))
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to dump %s: %v - %s", db.Dbname, err, stderrBuf.String())
+		return fmt.Errorf("failed to dump %s: %v - %s",
+			fmt.Sprintf("%s:%d", db.Host, db.Port),
+			err,
+			stderrBuf.String(),
+		)
 	}
 
 	// if everything is ok, just rename a temporary dir into the target one
@@ -151,8 +123,8 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 
 	slog.Info("backup",
 		slog.String("status", "ok"),
+		slog.String("mode", "pg_basebackup"),
 		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
-		slog.String("dbname", db.Dbname),
 		slog.String("path", filepath.ToSlash(okDest)),
 	)
 	return nil

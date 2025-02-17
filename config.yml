@@ -1,4 +1,5 @@
 dest: "./backups"
+printLogs: true
 
 # pg_dump
 dump:
@@ -43,7 +44,6 @@ base:
       port: 5432
       username: postgres
       password: postgres
-      dbname: bookstore
 
 retention:
   enable: true
