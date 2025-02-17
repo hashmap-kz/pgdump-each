@@ -2,28 +2,34 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 )
 
-const targetDir = "./backups"
+// TODO: these values are configurable
+const (
+	targetDir     = "./backups"
+	printDumpLogs = false
+)
 
 // remember timestamp for all backups
 // it is easy to sort/retain when all backups in one iteration use one timestamp
 var backupTimestamp = time.Now().Format("20060102150405")
 
 type BackupConfig struct {
-	// postgres://username:password@host:port/dbname
-	ConnStr string
+	// postgres://username:password@host:port/dbname?connect_timeout=5&sslmode=disable
+	Host     string
+	Port     string
+	Username string
+	Password string
+	Dbname   string
+	Opts     map[string]string
 
 	// optional filters
 	Schemas        []string
@@ -32,57 +38,27 @@ type BackupConfig struct {
 	ExcludeTables  []string
 }
 
-type HostConfig struct {
-	Host     string
-	Port     string
-	Username string
-	Password string
-	Dbname   string
-	Params   string
-}
-
-func parseConnStr(connString string) (*HostConfig, error) {
-	pref := strings.HasPrefix(connString, "postgres://") || strings.HasPrefix(connString, "postgresql://")
-	if !pref {
-		return nil, fmt.Errorf("not a postgresql conn-string: %s", connString)
-	}
-
-	parsedURL, err := url.Parse(connString)
-	if err != nil {
-		if urlErr := new(url.Error); errors.As(err, &urlErr) {
-			return nil, urlErr.Err
+func createConnStr(db BackupConfig) (string, error) {
+	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", db.Username, db.Password, db.Host, db.Port, db.Dbname)
+	if len(db.Opts) > 0 {
+		query := url.Values{}
+		for key, value := range db.Opts {
+			query.Set(key, value)
 		}
-		return nil, err
+		connStr = connStr + "?" + query.Encode()
 	}
-
-	var usr, pass string
-	if parsedURL.User != nil {
-		usr = parsedURL.User.Username()
-		if password, present := parsedURL.User.Password(); present {
-			pass = password
-		}
-	}
-
-	host, port, err := net.SplitHostPort(parsedURL.Host)
+	parse, err := url.Parse(connStr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to split host:port in '%s', err: %w", parsedURL.Host, err)
+		return "", err
 	}
-
-	return &HostConfig{
-		Host:     host,
-		Port:     port,
-		Username: usr,
-		Password: pass,
-		Dbname:   strings.TrimLeft(parsedURL.Path, "/"),
-		Params:   parsedURL.RawQuery,
-	}, nil
+	return parse.String(), nil
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(backupConfig BackupConfig) error {
+func dumpDatabase(db BackupConfig) error {
 	var err error
 
-	db, err := parseConnStr(backupConfig.ConnStr)
+	connStr, err := createConnStr(db)
 	if err != nil {
 		return err
 	}
@@ -102,7 +78,7 @@ func dumpDatabase(backupConfig BackupConfig) error {
 	// prepare args with optional filters
 
 	args := []string{
-		"--dbname=" + backupConfig.ConnStr,
+		"--dbname=" + connStr,
 		"--file=" + tmpDest,
 		"--format=directory",
 		"--jobs=2",
@@ -111,23 +87,23 @@ func dumpDatabase(backupConfig BackupConfig) error {
 		"--verbose",
 		"--verbose", // yes, twice
 	}
-	if len(backupConfig.Schemas) > 0 {
-		for _, arg := range backupConfig.Schemas {
+	if len(db.Schemas) > 0 {
+		for _, arg := range db.Schemas {
 			args = append(args, "--schema="+arg)
 		}
 	}
-	if len(backupConfig.ExcludeSchemas) > 0 {
-		for _, arg := range backupConfig.ExcludeSchemas {
+	if len(db.ExcludeSchemas) > 0 {
+		for _, arg := range db.ExcludeSchemas {
 			args = append(args, "--exclude-schema="+arg)
 		}
 	}
-	if len(backupConfig.Tables) > 0 {
-		for _, arg := range backupConfig.Tables {
+	if len(db.Tables) > 0 {
+		for _, arg := range db.Tables {
 			args = append(args, "--table="+arg)
 		}
 	}
-	if len(backupConfig.ExcludeTables) > 0 {
-		for _, arg := range backupConfig.ExcludeTables {
+	if len(db.ExcludeTables) > 0 {
+		for _, arg := range db.ExcludeTables {
 			args = append(args, "--exclude-table="+arg)
 		}
 	}
@@ -135,8 +111,12 @@ func dumpDatabase(backupConfig BackupConfig) error {
 	// execute dump CMD
 	var stdoutBuf, stderrBuf bytes.Buffer
 	cmd := exec.Command("pg_dump", args...)
-	cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
-	cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+	if printDumpLogs {
+		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+	} else {
+		cmd.Stderr = &stderrBuf
+	}
 	// Set environment variables for authentication
 	cmd.Env = append(cmd.Env, "PGPASSWORD=postgres") // Replace with a secure method
 	if err := cmd.Run(); err != nil {
@@ -168,13 +148,32 @@ func main() {
 	// Define your databases here
 	databases := []BackupConfig{
 		{
-			ConnStr: "postgres://postgres:postgres@localhost:5432/bookstore?connect_timeout=5&sslmode=disable",
+			Host:     "localhost",
+			Port:     "5432",
+			Username: "postgres",
+			Password: "postgres",
+			Dbname:   "bookstore",
+			Opts: map[string]string{
+				"connect_timeout": "5",
+				"sslmode":         "disable",
+			},
+			Schemas: []string{
+				"public",
+			},
 		},
 		{
-			ConnStr: "postgres://postgres:postgres@10.40.240.189:5432/keycloak_base",
+			Host:     "10.40.240.189",
+			Port:     "5432",
+			Username: "postgres",
+			Password: "postgres",
+			Dbname:   "keycloak_base",
 		},
 		{
-			ConnStr: "postgres://postgres:postgres@10.40.240.165:30201/vault",
+			Host:     "10.40.240.165",
+			Port:     "30201",
+			Username: "postgres",
+			Password: "postgres",
+			Dbname:   "vault",
 		},
 	}
 
