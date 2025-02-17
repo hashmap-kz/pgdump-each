@@ -63,6 +63,11 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 	var err error
 	cfg := config.Cfg()
 
+	pgBasebackup, err := exec.LookPath("pg_basebackup")
+	if err != nil {
+		return err
+	}
+
 	slog.Info("backup",
 		slog.String("status", "run"),
 		slog.String("mode", "pg_basebackup"),
@@ -102,7 +107,7 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 
 	// execute dump CMD
 	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd := exec.Command("pg_basebackup", args...)
+	cmd := exec.Command(pgBasebackup, args...)
 	if cfg.PrintDumpLogs {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
 		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)

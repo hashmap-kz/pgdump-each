@@ -64,6 +64,11 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 	var err error
 	cfg := config.Cfg()
 
+	pgDump, err := exec.LookPath("pg_dump")
+	if err != nil {
+		return err
+	}
+
 	// set jobs
 	jobs := cfg.Dump.Jobs
 	if jobs <= 0 || jobs >= 32 {
@@ -130,7 +135,7 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 
 	// execute dump CMD
 	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd := exec.Command("pg_dump", args...)
+	cmd := exec.Command(pgDump, args...)
 	if cfg.PrintDumpLogs {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
 		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
