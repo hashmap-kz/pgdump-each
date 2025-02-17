@@ -17,12 +17,10 @@ type retainInfo struct {
 	absPath  string
 	path     string
 	basename string
+	modTime  time.Time
 
 	// parsed path meta-info
-	datetime time.Time
-	host     string
-	port     string
-	dbname   string
+	backupInfo naming.BackupInfo
 }
 
 // host+port+dbname=[]backups
@@ -62,18 +60,19 @@ func PurgeOldDirs() error {
 	return nil
 }
 
-func dropBackups(ri []retainInfo) error {
-	for _, elem := range ri {
-		slog.Info("purge",
-			slog.String("msg", "rm -rf"),
-			slog.String("path", filepath.ToSlash(elem.path)),
-		)
-		err := os.RemoveAll(elem.absPath)
-		if err != nil {
-			return err
-		}
+func findAllBackups() (retainList, error) {
+	result := make(map[string][]retainInfo)
+
+	backups, err := findDumpsDirs()
+	if err != nil {
+		return nil, err
 	}
-	return nil
+	for _, b := range backups {
+		key := fmt.Sprintf("%s-%s-%s", b.backupInfo.Host, b.backupInfo.Port, b.backupInfo.Dbname)
+		result[key] = append(result[key], b)
+	}
+
+	return result, nil
 }
 
 func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, keepCnt int) ([]retainInfo, error) {
@@ -84,8 +83,8 @@ func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, k
 
 		// (oldest to newest)
 		sort.SliceStable(v, func(i, j int) bool {
-			dateI := v[i].datetime
-			dateJ := v[j].datetime
+			dateI := v[i].backupInfo.Datetime
+			dateJ := v[j].backupInfo.Datetime
 			return dateI.Before(dateJ)
 		})
 
@@ -98,31 +97,12 @@ func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, k
 		} else {
 			for i := 0; i < toDelete; i++ {
 				elem := v[i]
-				info, err := os.Stat(elem.path)
-				if err != nil {
-					return nil, fmt.Errorf("error accessing folder %s: %v", elem.path, err)
-				}
-				if currentTime.Sub(info.ModTime()) > retentionPeriod {
+				if currentTime.Sub(elem.modTime) > retentionPeriod {
 					result = append(result, elem)
 				}
 			}
 		}
 
-	}
-
-	return result, nil
-}
-
-func findAllBackups() (retainList, error) {
-	result := make(map[string][]retainInfo)
-
-	backups, err := findDumpsDirs()
-	if err != nil {
-		return nil, err
-	}
-	for _, b := range backups {
-		key := fmt.Sprintf("%s-%s-%s", b.host, b.port, b.dbname)
-		result[key] = append(result[key], b)
 	}
 
 	return result, nil
@@ -158,27 +138,35 @@ func parseBackupInfo(path string) (retainInfo, error) {
 		return retainInfo{}, err
 	}
 
-	basename := filepath.Base(path)
-	notBackupDir := fmt.Errorf("not a backup dir: %s", filepath.ToSlash(path))
-	submatch := naming.BackupDmpRegex.FindStringSubmatch(basename)
-
-	if len(submatch) != 5 {
-		return retainInfo{}, notBackupDir
+	fileInfo, err := os.Stat(path)
+	if err != nil {
+		return retainInfo{}, fmt.Errorf("error accessing folder %s: %v", path, err)
 	}
 
-	date, err := time.Parse(naming.TimestampLayout, submatch[1])
+	backupInfo, err := naming.ParseDmpRegex(path)
 	if err != nil {
-		return retainInfo{}, notBackupDir
+		return retainInfo{}, err
 	}
 
 	return retainInfo{
-		absPath:  absPath,
-		path:     path,
-		basename: basename,
-
-		datetime: date,
-		host:     submatch[2],
-		port:     submatch[3],
-		dbname:   submatch[4],
+		absPath:    absPath,
+		path:       path,
+		basename:   filepath.Base(path),
+		modTime:    fileInfo.ModTime(),
+		backupInfo: backupInfo,
 	}, nil
+}
+
+func dropBackups(ri []retainInfo) error {
+	for _, elem := range ri {
+		slog.Info("purge",
+			slog.String("msg", "rm -rf"),
+			slog.String("path", filepath.ToSlash(elem.path)),
+		)
+		err := os.RemoveAll(elem.absPath)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }

@@ -1,6 +1,11 @@
 package naming
 
-import "regexp"
+import (
+	"fmt"
+	"path/filepath"
+	"regexp"
+	"time"
+)
 
 const (
 	TimestampLayout  = "20060102150405"
@@ -17,3 +22,33 @@ var (
 
 	DatabaseNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]{0,62}$`)
 )
+
+type BackupInfo struct {
+	Datetime time.Time
+	Host     string
+	Port     string
+	Dbname   string
+}
+
+func ParseDmpRegex(path string) (BackupInfo, error) {
+	notBackupDir := fmt.Errorf("not a backup dir: %s", filepath.ToSlash(path))
+
+	basename := filepath.Base(path)
+	regMatch := BackupDmpRegex.FindStringSubmatch(basename)
+
+	if len(regMatch) != 5 {
+		return BackupInfo{}, notBackupDir
+	}
+
+	dateTimeFromDirNamePattern, err := time.Parse(TimestampLayout, regMatch[1])
+	if err != nil {
+		return BackupInfo{}, notBackupDir
+	}
+
+	return BackupInfo{
+		Datetime: dateTimeFromDirNamePattern,
+		Host:     regMatch[2],
+		Port:     regMatch[3],
+		Dbname:   regMatch[4],
+	}, nil
+}
