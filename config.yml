@@ -1,20 +1,41 @@
-dest: "/.backups"
+dest: "./backups"
 
 # pg_dump
 dump:
   jobs: 2
   dbs:
-    - conn: "postgres://postgres:${MY_PG_PASS}@localhost:5432/bookstore?connect_timeout=5&sslmode=disable"
+    - host: localhost
+      port: 5432
+      username: postgres
+      password: postgres
+      dbname: bookstore
+      opts:
+        connect_timeout: "5"
+        sslmode: "disable"
       schemas: [ ]
       excludeSchemas: [ ]
       tables: [ ]
       excludeTables: [ ]
-    - conn: "postgres://postgres:postgres@10.40.240.189:5432/keycloak_base"
-    - conn: "postgres://postgres:postgres@10.40.240.165:30201/vault"
+
+    - host: 10.40.240.189
+      port: 5432
+      username: postgres
+      password: postgres
+      dbname: keycloak_base
+
+    - host: 10.40.240.165
+      port: 30201
+      username: postgres
+      password: postgres
+      dbname: vault
 
 # pg_basebackup
 base:
-  - conn: "postgres://postgres:postgres@localhost:5432/bookstore?connect_timeout=5&sslmode=disable"
+  - host: localhost
+    port: 5432
+    username: postgres
+    password: postgres
+    dbname: bookstore
 
 retention:
   enable: true

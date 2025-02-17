@@ -15,20 +15,16 @@ import (
 	"gopgdump/internal/util"
 )
 
-// TODO: these values are configurable
-const (
-	targetDir     = "./backups"
-	printDumpLogs = false
-)
-
 // remember timestamp for all backups
 // it is easy to sort/retain when all backups in one iteration use one timestamp
 var backupTimestamp = time.Now().Format("20060102150405")
 
-func RunBackup(databases []config.BackupConfig) {
+func RunBackup() {
+	cfg := config.Cfg()
+
 	// Number of concurrent workers
 	workerCount := 3
-	dbChan := make(chan config.BackupConfig, len(databases))
+	dbChan := make(chan config.DatabaseConfig, len(cfg.Dump.DBS))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
@@ -38,7 +34,7 @@ func RunBackup(databases []config.BackupConfig) {
 	}
 
 	// Send databases to the worker channel
-	for _, db := range databases {
+	for _, db := range cfg.Dump.DBS {
 		dbChan <- db
 	}
 
@@ -48,7 +44,7 @@ func RunBackup(databases []config.BackupConfig) {
 }
 
 // worker handles executing pg_dump tasks.
-func worker(databases <-chan config.BackupConfig, wg *sync.WaitGroup) {
+func worker(databases <-chan config.DatabaseConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for db := range databases {
@@ -59,8 +55,9 @@ func worker(databases <-chan config.BackupConfig, wg *sync.WaitGroup) {
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(db config.BackupConfig) error {
+func dumpDatabase(db config.DatabaseConfig) error {
 	var err error
+	cfg := config.Cfg()
 
 	slog.Info("backup",
 		slog.String("status", "run"),
@@ -74,7 +71,7 @@ func dumpDatabase(db config.BackupConfig) error {
 	}
 
 	// layout: host-port/datetime-dbname
-	hostPortPath := filepath.Join(targetDir, fmt.Sprintf("%s-%s", db.Host, db.Port))
+	hostPortPath := filepath.Join(cfg.Dest, fmt.Sprintf("%s-%s", db.Host, db.Port))
 	// need in case backup is failed
 	tmpDest := filepath.Join(hostPortPath, fmt.Sprintf("%s-%s.dirty", backupTimestamp, db.Dbname))
 	// rename to target, if everything is success
@@ -121,7 +118,7 @@ func dumpDatabase(db config.BackupConfig) error {
 	// execute dump CMD
 	var stdoutBuf, stderrBuf bytes.Buffer
 	cmd := exec.Command("pg_dump", args...)
-	if printDumpLogs {
+	if cfg.PrintLogs {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
 		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
 	} else {

@@ -2,7 +2,10 @@ module gopgdump
 
 go 1.23.4
 
-require github.com/stretchr/testify v1.10.0
+require (
+	github.com/stretchr/testify v1.10.0
+	sigs.k8s.io/yaml v1.4.0
+)
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
