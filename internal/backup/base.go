@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"gopgdump/internal/util"
+
 	"gopgdump/config"
 	"gopgdump/internal/ts"
 )
@@ -67,6 +69,11 @@ func dumpCluster(db config.PgBaseBackupDatabaseConfig) error {
 		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
 	)
 
+	connStrBasebackup, err := util.CreateConnStrBasebackup(db)
+	if err != nil {
+		return err
+	}
+
 	// layout: datetime--host-port--dbname.dmp
 	dumpName := fmt.Sprintf("%s--%s-%d--pg_basebackup", ts.WorkingTimestamp, db.Host, db.Port)
 	// need in case backup is failed
@@ -82,9 +89,7 @@ func dumpCluster(db config.PgBaseBackupDatabaseConfig) error {
 	// prepare args with optional filters
 
 	args := []string{
-		"--host=" + db.Host,
-		"--port=" + fmt.Sprintf("%d", db.Port),
-		"--username=" + db.Username,
+		"--dbname=" + connStrBasebackup,
 		"--pgdata=" + tmpDest,
 		"--checkpoint=fast",
 		"--progress",
