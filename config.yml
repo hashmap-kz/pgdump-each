@@ -47,8 +47,8 @@ base:
 
 retention:
   enable: true
-  period: 5m
-  keepLast: 2
+  period: 1m
+  keepLast: 1
 
 logger:
   # text/json
