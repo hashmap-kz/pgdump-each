@@ -12,15 +12,16 @@ const (
 	PgDumpPath       = "dump"
 	PgBasebackupPath = "base"
 	PgConfPath       = "conf"
+
+	baseDmpPattern = `^(\d{14})--([a-zA-Z0-9.-]+)-(\d{1,5})--([a-zA-Z_][a-zA-Z0-9_]{0,62})`
 )
 
 var (
 	// BackupDmpRegex defines a regex for filter dumps in  target dir
 	// layout: datetime--host-port--dbname.dmp
 	// example: 20250217134506--10.40.240.165-30201--vault.dmp
-	BackupDmpRegex = regexp.MustCompile(`^(\d{14})--([a-zA-Z0-9.-]+)-(\d{1,5})--([a-zA-Z_][a-zA-Z0-9_]{0,62})\.dmp$`)
-
-	BackupDirtyRegex = regexp.MustCompile(`^(\d{14})--([a-zA-Z0-9.-]+)-(\d{1,5})--([a-zA-Z_][a-zA-Z0-9_]{0,62})\.dirty$`)
+	BackupDmpRegex   = regexp.MustCompile(baseDmpPattern + `\.dmp$`)
+	BackupDirtyRegex = regexp.MustCompile(baseDmpPattern + `\.dirty$`)
 
 	DatabaseNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]{0,62}$`)
 )
