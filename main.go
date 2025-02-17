@@ -11,8 +11,8 @@ import (
 )
 
 func main() {
-	slog.SetDefault(logger.InitLogger("text", "debug"))
-	_ = config.LoadConfigFromFile("config.yml")
+	cfg := config.LoadConfigFromFile("config.yml")
+	slog.SetDefault(logger.InitLogger(cfg.Logger.Format, cfg.Logger.Level))
 
 	// TODO: before concurrent tasks
 	// 1) remove all '*.dirty' dirs, if any

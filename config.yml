@@ -42,6 +42,12 @@ retention:
   period: 5d
   keepLast: 2
 
+logger:
+  # text/json
+  format: text
+  # debug info warn error
+  level: debug
+
 upload:
   retryAttempts: 2
   jobs: 8

@@ -50,8 +50,8 @@ type RetentionConfig struct {
 }
 
 type LoggerConfig struct {
-	Encoding string
-	Level    string
+	Format string
+	Level  string
 }
 
 // LoadConfigFromFile unmarshal file into config struct
