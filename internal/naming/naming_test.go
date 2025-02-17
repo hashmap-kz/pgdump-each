@@ -37,17 +37,23 @@ func TestHostFolderRegex(t *testing.T) {
 
 func TestBackupDmpRegex(t *testing.T) {
 	validCases := []string{
-		"20250217110721-dbname.dmp",
-		"20240101010101-test_db.dmp",
-		"19991231235959-my_backup-123.dmp",
+		"20250217110721-dbname.dmp",        // Valid
+		"20240101010101-testdb.dmp",        // Valid (underscore)
+		"20240101010101-test_db123.dmp",    // Valid (starts with lowercase letter)
+		"20250217110721-_underscore__.dmp", // Valid (leading underscore)
+		"20250217110721-a12345678901234567890123456789012345678901234567890123456789012.dmp", // Exactly 63 chars
 	}
 
 	invalidCases := []string{
-		"202502171107-dbname.dmp",    // Missing digits
-		"abc20250217110721-db.dmp",   // Extra characters before timestamp
-		"20250217110721-.dmp",        // Missing dbname
-		"20250217110721-db.name.dmp", // Invalid character (dot)
-		"20250217110721-db/dump.dmp", // Invalid character (slash)
+		"202502171107-dbname.dmp",      // Missing full timestamp
+		"abc20250217110721-db.dmp",     // Extra characters before timestamp
+		"20250217110721-.dmp",          // Missing dbname
+		"20250217110721-123dbname.dmp", // Starts with a number
+		"20250217110721-DBNAME.dmp",    // Uppercase letters
+		"20250217110721-db-name.dmp",   // Hyphen not allowed
+		"20250217110721-db.name.dmp",   // Dot not allowed
+		"20250217110721-db/dump.dmp",   // Slash not allowed
+		"20250217110721-a12345678901234567890123456789012345678901234567890123456789012_.dmp", // Exceeds 63 chars
 	}
 
 	for _, tc := range validCases {

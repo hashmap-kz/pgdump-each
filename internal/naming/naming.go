@@ -5,7 +5,7 @@ import "regexp"
 const TimestampLayout = "20060102150405"
 
 var (
-	BackupDmpRegex = regexp.MustCompile(`^(\d{14})-([a-zA-Z0-9_-]+)\.dmp$`)
+	BackupDmpRegex = regexp.MustCompile(`^(\d{14})-([a-z_][a-z0-9_]{0,62})\.dmp$`)
 
 	DatabaseNameRegex = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
 

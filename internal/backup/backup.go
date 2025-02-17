@@ -3,7 +3,6 @@ package backup
 import (
 	"bytes"
 	"fmt"
-	"gopgdump/internal/naming"
 	"io"
 	"log/slog"
 	"os"
@@ -11,6 +10,8 @@ import (
 	"path/filepath"
 	"sync"
 	"time"
+
+	"gopgdump/internal/naming"
 
 	"gopgdump/config"
 	"gopgdump/internal/util"
