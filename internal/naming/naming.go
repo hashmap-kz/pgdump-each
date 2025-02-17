@@ -49,7 +49,7 @@ func ParseDmpRegex(path string) (BackupInfo, error) {
 	}
 
 	return BackupInfo{
-		Datetime: dateTimeFromDirNamePattern,
+		Datetime: dateTimeFromDirNamePattern.Truncate(time.Second).UTC(),
 		Host:     regMatch[2],
 		Port:     regMatch[3],
 		Dbname:   regMatch[4],

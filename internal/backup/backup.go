@@ -84,7 +84,7 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 	}
 
 	// layout: datetime--host-port--dbname.dmp
-	dumpName := fmt.Sprintf("%s--%s-%d--%s", ts.BackupTimestamp, db.Host, db.Port, db.Dbname)
+	dumpName := fmt.Sprintf("%s--%s-%d--%s", ts.WorkingTimestamp, db.Host, db.Port, db.Dbname)
 	// need in case backup is failed
 	tmpDest := filepath.Join(cfg.Dest, naming.PgDumpPath, dumpName+".dirty")
 	// rename to target, if everything is success

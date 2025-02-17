@@ -18,7 +18,6 @@ type retainInfo struct {
 	absPath  string
 	path     string
 	basename string
-	modTime  time.Time
 
 	// parsed path meta-info
 	backupInfo naming.BackupInfo
@@ -78,7 +77,6 @@ func findAllBackups() (retainList, error) {
 
 func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, keepCnt int) ([]retainInfo, error) {
 	var result []retainInfo
-	currentTime := time.Now()
 
 	for k, v := range retainList {
 
@@ -98,7 +96,8 @@ func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, k
 		} else {
 			for i := 0; i < toDelete; i++ {
 				elem := v[i]
-				if currentTime.Sub(elem.modTime) > retentionPeriod {
+				elapsed := time.Since(elem.backupInfo.Datetime).Truncate(time.Second)
+				if elapsed > retentionPeriod {
 					result = append(result, elem)
 				}
 			}
@@ -139,11 +138,6 @@ func parseBackupInfo(path string) (retainInfo, error) {
 		return retainInfo{}, err
 	}
 
-	fileInfo, err := os.Stat(path)
-	if err != nil {
-		return retainInfo{}, fmt.Errorf("error accessing folder %s: %v", path, err)
-	}
-
 	backupInfo, err := naming.ParseDmpRegex(path)
 	if err != nil {
 		return retainInfo{}, err
@@ -153,7 +147,6 @@ func parseBackupInfo(path string) (retainInfo, error) {
 		absPath:    absPath,
 		path:       path,
 		basename:   filepath.Base(path),
-		modTime:    fileInfo.ModTime(),
 		backupInfo: backupInfo,
 	}, nil
 }
