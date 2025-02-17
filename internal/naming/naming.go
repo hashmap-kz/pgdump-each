@@ -2,7 +2,12 @@ package naming
 
 import "regexp"
 
-const TimestampLayout = "20060102150405"
+const (
+	TimestampLayout  = "20060102150405"
+	PgDumpPath       = "dump"
+	PgBasebackupPath = "base"
+	PgConfPath       = "conf"
+)
 
 var (
 	BackupDmpRegex = regexp.MustCompile(`^(\d{14})-([a-z_][a-z0-9_]{0,62})\.dmp$`)
