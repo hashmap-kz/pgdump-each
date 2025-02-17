@@ -30,15 +30,15 @@ type Config struct {
 
 type PgDumpsConfig struct {
 	Jobs int
-	DBS  []PgDumpDatabaseConfig
+	DBS  []PgDumpDatabase
 }
 
 type PgBaseBackupsConfig struct {
 	Compress bool
-	DBS      []PgBaseBackupDatabaseConfig
+	Clusters []PgBaseBackupCluster
 }
 
-type PgBaseBackupDatabaseConfig struct {
+type PgBaseBackupCluster struct {
 	Host     string
 	Port     int
 	Username string
@@ -46,7 +46,7 @@ type PgBaseBackupDatabaseConfig struct {
 	Opts     map[string]string
 }
 
-type PgDumpDatabaseConfig struct {
+type PgDumpDatabase struct {
 	// postgres://username:password@host:port/dbname?connect_timeout=5&sslmode=disable
 	Host     string
 	Port     int
@@ -129,7 +129,7 @@ func checkConfigHard() {
 
 	// must not be duplicates: host+port
 	m = map[string]string{}
-	for _, db := range config.Base.DBS {
+	for _, db := range config.Base.Clusters {
 		ips, err := xnet.LookupIP4Addresses(db.Host)
 		if err != nil {
 			log.Fatal(err)

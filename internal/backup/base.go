@@ -18,34 +18,34 @@ import (
 
 func RunPgBasebackups() {
 	cfg := config.Cfg()
-	databases := cfg.Base.DBS
+	clusters := cfg.Base.Clusters
 
 	// Number of concurrent workers
 	workerCount := 3
-	dbChan := make(chan config.PgBaseBackupDatabaseConfig, len(databases))
+	clusterChan := make(chan config.PgBaseBackupCluster, len(clusters))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
-		go pgBasebackupWorker(dbChan, &wg)
+		go pgBasebackupWorker(clusterChan, &wg)
 	}
 
-	// Send databases to the pgDumpWorker channel
-	for _, db := range databases {
-		dbChan <- db
+	// Send clusters to the pgDumpWorker channel
+	for _, db := range clusters {
+		clusterChan <- db
 	}
 
 	// Close the channel and wait for workers to finish
-	close(dbChan)
+	close(clusterChan)
 	wg.Wait()
 }
 
 // pgDumpWorker handles executing pg_dump tasks.
-func pgBasebackupWorker(databases <-chan config.PgBaseBackupDatabaseConfig, wg *sync.WaitGroup) {
+func pgBasebackupWorker(clusters <-chan config.PgBaseBackupCluster, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	for db := range databases {
+	for db := range clusters {
 		if err := dumpCluster(db); err != nil {
 			// log errors, and continue, don't care about,
 			// the dump is performed in a tmp (*.dirty) directory
@@ -59,23 +59,23 @@ func pgBasebackupWorker(databases <-chan config.PgBaseBackupDatabaseConfig, wg *
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpCluster(db config.PgBaseBackupDatabaseConfig) error {
+func dumpCluster(cluster config.PgBaseBackupCluster) error {
 	var err error
 	cfg := config.Cfg()
 
 	slog.Info("backup",
 		slog.String("status", "run"),
 		slog.String("mode", "pg_basebackup"),
-		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
+		slog.String("cluster", fmt.Sprintf("%s:%d", cluster.Host, cluster.Port)),
 	)
 
-	connStrBasebackup, err := util.CreateConnStrBasebackup(db)
+	connStrBasebackup, err := util.CreateConnStrBasebackup(cluster)
 	if err != nil {
 		return err
 	}
 
 	// layout: datetime--host-port--dbname.dmp
-	dumpName := fmt.Sprintf("%s--%s-%d--pg_basebackup", ts.WorkingTimestamp, db.Host, db.Port)
+	dumpName := fmt.Sprintf("%s--%s-%d--pg_basebackup", ts.WorkingTimestamp, cluster.Host, cluster.Port)
 	// need in case backup is failed
 	tmpDest := filepath.Join(cfg.Dest, dumpName+".dirty")
 	// rename to target, if everything is success
@@ -110,10 +110,10 @@ func dumpCluster(db config.PgBaseBackupDatabaseConfig) error {
 		cmd.Stderr = &stderrBuf
 	}
 	// Set environment variables for authentication
-	cmd.Env = append(cmd.Env, fmt.Sprintf("PGPASSWORD=%s", db.Password))
+	cmd.Env = append(cmd.Env, fmt.Sprintf("PGPASSWORD=%s", cluster.Password))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to dump %s: %v - %s",
-			fmt.Sprintf("%s:%d", db.Host, db.Port),
+			fmt.Sprintf("%s:%d", cluster.Host, cluster.Port),
 			err,
 			stderrBuf.String(),
 		)
@@ -128,7 +128,7 @@ func dumpCluster(db config.PgBaseBackupDatabaseConfig) error {
 	slog.Info("backup",
 		slog.String("status", "ok"),
 		slog.String("mode", "pg_basebackup"),
-		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
+		slog.String("cluster", fmt.Sprintf("%s:%d", cluster.Host, cluster.Port)),
 		slog.String("path", filepath.ToSlash(okDest)),
 	)
 	return nil

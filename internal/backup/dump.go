@@ -22,7 +22,7 @@ func RunPgDumps() {
 
 	// Number of concurrent workers
 	workerCount := 3
-	dbChan := make(chan config.PgDumpDatabaseConfig, len(databases))
+	dbChan := make(chan config.PgDumpDatabase, len(databases))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
@@ -42,7 +42,7 @@ func RunPgDumps() {
 }
 
 // pgDumpWorker handles executing pg_dump tasks.
-func pgDumpWorker(databases <-chan config.PgDumpDatabaseConfig, wg *sync.WaitGroup) {
+func pgDumpWorker(databases <-chan config.PgDumpDatabase, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for db := range databases {
@@ -60,7 +60,7 @@ func pgDumpWorker(databases <-chan config.PgDumpDatabaseConfig, wg *sync.WaitGro
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(db config.PgDumpDatabaseConfig) error {
+func dumpDatabase(db config.PgDumpDatabase) error {
 	var err error
 	cfg := config.Cfg()
 

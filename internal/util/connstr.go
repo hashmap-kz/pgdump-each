@@ -7,7 +7,7 @@ import (
 	"gopgdump/config"
 )
 
-func CreateConnStr(db config.PgDumpDatabaseConfig) (string, error) {
+func CreateConnStr(db config.PgDumpDatabase) (string, error) {
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", db.Username, db.Password, db.Host, db.Port, db.Dbname)
 	if len(db.Opts) > 0 {
 		query := url.Values{}
@@ -23,7 +23,7 @@ func CreateConnStr(db config.PgDumpDatabaseConfig) (string, error) {
 	return parse.String(), nil
 }
 
-func CreateConnStrBasebackup(db config.PgBaseBackupDatabaseConfig) (string, error) {
+func CreateConnStrBasebackup(db config.PgBaseBackupCluster) (string, error) {
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d", db.Username, db.Password, db.Host, db.Port)
 	if len(db.Opts) > 0 {
 		query := url.Values{}
