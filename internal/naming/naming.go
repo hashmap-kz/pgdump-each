@@ -19,8 +19,6 @@ var (
 	BackupDmpRegex   = regexp.MustCompile(baseDmpPattern + `\.dmp$`)
 	BackupDirtyRegex = regexp.MustCompile(baseDmpPattern + `\.dirty$`)
 
-	BackupClusterRegex = regexp.MustCompile(`^(\d{14})--([a-zA-Z0-9.-]+)-(\d{1,5})--(pg_basebackup)`)
-
 	DatabaseNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]{0,62}$`)
 )
 

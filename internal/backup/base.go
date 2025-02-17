@@ -80,7 +80,7 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 	}
 
 	// layout: datetime--host-port--dbname.dmp
-	dumpName := fmt.Sprintf("%s--%s-%d--pg_basebackup", ts.WorkingTimestamp, cluster.Host, cluster.Port)
+	dumpName := fmt.Sprintf("%s--%s-%d--__pg_basebackup__", ts.WorkingTimestamp, cluster.Host, cluster.Port)
 	// need in case backup is failed
 	tmpDest := filepath.Join(cfg.Dest, dumpName+".dirty")
 	// rename to target, if everything is success
