@@ -27,10 +27,10 @@ var (
 )
 
 type BackupInfo struct {
-	Datetime time.Time
-	Host     string
-	Port     string
-	Dbname   string
+	DatetimeUTC time.Time
+	Host        string
+	Port        string
+	Dbname      string
 }
 
 func ParseDmpRegex(path string) (BackupInfo, error) {
@@ -49,9 +49,9 @@ func ParseDmpRegex(path string) (BackupInfo, error) {
 	}
 
 	return BackupInfo{
-		Datetime: dateTimeFromDirNamePattern.Truncate(time.Second).UTC(),
-		Host:     regMatch[2],
-		Port:     regMatch[3],
-		Dbname:   regMatch[4],
+		DatetimeUTC: dateTimeFromDirNamePattern.Truncate(time.Second).UTC(),
+		Host:        regMatch[2],
+		Port:        regMatch[3],
+		Dbname:      regMatch[4],
 	}, nil
 }

@@ -14,12 +14,7 @@ import (
 )
 
 type retainInfo struct {
-	// path info
-	absPath  string
-	path     string
-	basename string
-
-	// parsed path meta-info
+	absPath    string
 	backupInfo naming.BackupInfo
 }
 
@@ -82,8 +77,8 @@ func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, k
 
 		// (oldest to newest)
 		sort.SliceStable(v, func(i, j int) bool {
-			dateI := v[i].backupInfo.Datetime
-			dateJ := v[j].backupInfo.Datetime
+			dateI := v[i].backupInfo.DatetimeUTC
+			dateJ := v[j].backupInfo.DatetimeUTC
 			return dateI.Before(dateJ)
 		})
 
@@ -96,7 +91,7 @@ func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, k
 		} else {
 			for i := 0; i < toDelete; i++ {
 				elem := v[i]
-				elapsed := time.Since(elem.backupInfo.Datetime).Truncate(time.Second)
+				elapsed := time.Since(elem.backupInfo.DatetimeUTC).Truncate(time.Second)
 				if elapsed > retentionPeriod {
 					result = append(result, elem)
 				}
@@ -145,8 +140,6 @@ func parseBackupInfo(path string) (retainInfo, error) {
 
 	return retainInfo{
 		absPath:    absPath,
-		path:       path,
-		basename:   filepath.Base(path),
 		backupInfo: backupInfo,
 	}, nil
 }
@@ -155,7 +148,7 @@ func dropBackups(ri []retainInfo) error {
 	for _, elem := range ri {
 		slog.Info("purge",
 			slog.String("msg", "rm -rf"),
-			slog.String("path", filepath.ToSlash(elem.path)),
+			slog.String("path", filepath.ToSlash(elem.absPath)),
 		)
 		err := os.RemoveAll(elem.absPath)
 		if err != nil {
