@@ -1,8 +1,9 @@
 dest: "./backups"
+printDumpLogs: false
 
 # pg_dump
 dump:
-  jobs: 2
+  jobs: 5
   dbs:
     - host: localhost
       port: 5432
@@ -16,6 +17,12 @@ dump:
       excludeSchemas: [ ]
       tables: [ ]
       excludeTables: [ ]
+
+    - host: localhost
+      port: 5432
+      username: postgres
+      password: postgres
+      dbname: demo
 
     - host: 10.40.240.189
       port: 5432
@@ -32,17 +39,19 @@ dump:
 # pg_basebackup
 base:
   compress: true
-  dbs:
+  clusters:
     - host: localhost
       port: 5432
       username: postgres
       password: postgres
-      dbname: bookstore
+      opts:
+        connect_timeout: "5"
+        sslmode: "disable"
 
 retention:
   enable: true
-  period: 5d
-  keepLast: 2
+  period: 1m
+  keepLast: 1
 
 logger:
   # text/json

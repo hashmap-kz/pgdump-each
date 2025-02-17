@@ -1,9 +1,13 @@
 package config
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
+
+	"gopgdump/pkg/xnet"
 
 	"sigs.k8s.io/yaml"
 )
@@ -19,32 +23,33 @@ type Config struct {
 	Base      PgBaseBackupsConfig
 	Retention RetentionConfig
 
-	Logger    LoggerConfig
-	PrintLogs bool
+	Logger LoggerConfig
+
+	PrintDumpLogs bool
 }
 
 type PgDumpsConfig struct {
 	Jobs int
-	DBS  []PgDumpDatabaseConfig
+	DBS  []PgDumpDatabase
 }
 
 type PgBaseBackupsConfig struct {
 	Compress bool
-	DBS      []PgBaseBackupDatabaseConfig
+	Clusters []PgBaseBackupCluster
 }
 
-type PgBaseBackupDatabaseConfig struct {
+type PgBaseBackupCluster struct {
 	Host     string
-	Port     string
+	Port     int
 	Username string
 	Password string
 	Opts     map[string]string
 }
 
-type PgDumpDatabaseConfig struct {
+type PgDumpDatabase struct {
 	// postgres://username:password@host:port/dbname?connect_timeout=5&sslmode=disable
 	Host     string
-	Port     string
+	Port     int
 	Username string
 	Password string
 	Dbname   string
@@ -84,15 +89,7 @@ func LoadConfigFromFile(filename string) *Config {
 			log.Fatal(err)
 		}
 		config = &cfg
-
-		// TODO: later
-		//errors := validateStruct(config)
-		//if len(errors) > 0 {
-		//	for _, e := range errors {
-		//		log.Printf("%v", e)
-		//	}
-		//	log.Fatalln("config-file is not completely set")
-		//}
+		checkConfigHard()
 	})
 
 	return config
@@ -109,9 +106,40 @@ func LoadConfig(content []byte) *Config {
 			log.Fatal(err)
 		}
 		config = &cfg
+		checkConfigHard()
 	})
 
 	return config
+}
+
+func checkConfigHard() {
+	// must not be duplicates: host+port+dbname
+	m := map[string]string{}
+	for _, db := range config.Dump.DBS {
+		ips, err := xnet.LookupIP4Addresses(db.Host)
+		if err != nil {
+			log.Fatal(err)
+		}
+		key := fmt.Sprintf("%s;%d;%s", strings.Join(ips, ";"), db.Port, db.Dbname)
+		if _, ok := m[key]; ok {
+			log.Fatalf("found duplicate: host=%s port=%d dbname=%s", db.Host, db.Port, db.Dbname)
+		}
+		m[key] = key
+	}
+
+	// must not be duplicates: host+port
+	m = map[string]string{}
+	for _, db := range config.Base.Clusters {
+		ips, err := xnet.LookupIP4Addresses(db.Host)
+		if err != nil {
+			log.Fatal(err)
+		}
+		key := fmt.Sprintf("%s;%d", strings.Join(ips, ";"), db.Port)
+		if _, ok := m[key]; ok {
+			log.Fatalf("found duplicate: host=%s port=%d", db.Host, db.Port)
+		}
+		m[key] = key
+	}
 }
 
 func expandEnvVars(buf []byte) []byte {
