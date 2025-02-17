@@ -65,10 +65,17 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 	var err error
 	cfg := config.Cfg()
 
+	// set jobs
+	jobs := cfg.Dump.Jobs
+	if jobs <= 0 || jobs >= 32 {
+		jobs = 2
+	}
+
 	slog.Info("backup",
 		slog.String("status", "run"),
 		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
 		slog.String("dbname", db.Dbname),
+		slog.Int("jobs", jobs),
 	)
 
 	connStr, err := util.CreateConnStr(db)
@@ -94,7 +101,7 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 		"--dbname=" + connStr,
 		"--file=" + tmpDest,
 		"--format=directory",
-		"--jobs=2",
+		"--jobs=" + fmt.Sprintf("%d", jobs),
 		"--compress=1",
 		"--no-password",
 		"--verbose",

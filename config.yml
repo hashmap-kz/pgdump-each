@@ -2,7 +2,7 @@ dest: "./backups"
 
 # pg_dump
 dump:
-  jobs: 2
+  jobs: 5
   dbs:
     - host: localhost
       port: 5432
