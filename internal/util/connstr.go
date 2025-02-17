@@ -7,7 +7,7 @@ import (
 	"gopgdump/config"
 )
 
-func CreateConnStr(db config.DatabaseConfig) (string, error) {
+func CreateConnStr(db config.PgDumpDatabaseConfig) (string, error) {
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", db.Username, db.Password, db.Host, db.Port, db.Dbname)
 	if len(db.Opts) > 0 {
 		query := url.Values{}

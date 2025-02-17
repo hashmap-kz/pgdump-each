@@ -27,7 +27,7 @@ func RunBackup() {
 
 	// Number of concurrent workers
 	workerCount := 3
-	dbChan := make(chan config.DatabaseConfig, len(databases))
+	dbChan := make(chan config.PgDumpDatabaseConfig, len(databases))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
@@ -47,18 +47,25 @@ func RunBackup() {
 }
 
 // worker handles executing pg_dump tasks.
-func worker(databases <-chan config.DatabaseConfig, wg *sync.WaitGroup) {
+func worker(databases <-chan config.PgDumpDatabaseConfig, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for db := range databases {
 		if err := dumpDatabase(db); err != nil {
-			fmt.Println(err)
+			// log errors, and continue, don't care about,
+			// the dump is performed in a tmp (*.dirty) directory
+			slog.Error("backup",
+				slog.String("status", "error"),
+				slog.String("err", err.Error()),
+				slog.String("server", fmt.Sprintf("%s:%s", db.Host, db.Port)),
+				slog.String("dbname", db.Dbname),
+			)
 		}
 	}
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(db config.DatabaseConfig) error {
+func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 	var err error
 	cfg := config.Cfg()
 

@@ -15,19 +15,33 @@ var (
 
 type Config struct {
 	Dest      string
-	Dump      DumpConfig
+	Dump      PgDumpsConfig
+	Base      PgBaseBackupsConfig
 	Retention RetentionConfig
 
 	Logger    LoggerConfig
 	PrintLogs bool
 }
 
-type DumpConfig struct {
+type PgDumpsConfig struct {
 	Jobs int
-	DBS  []DatabaseConfig
+	DBS  []PgDumpDatabaseConfig
 }
 
-type DatabaseConfig struct {
+type PgBaseBackupsConfig struct {
+	Compress bool
+	DBS      []PgBaseBackupDatabaseConfig
+}
+
+type PgBaseBackupDatabaseConfig struct {
+	Host     string
+	Port     string
+	Username string
+	Password string
+	Opts     map[string]string
+}
+
+type PgDumpDatabaseConfig struct {
 	// postgres://username:password@host:port/dbname?connect_timeout=5&sslmode=disable
 	Host     string
 	Port     string

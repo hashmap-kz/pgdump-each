@@ -31,11 +31,13 @@ dump:
 
 # pg_basebackup
 base:
-  - host: localhost
-    port: 5432
-    username: postgres
-    password: postgres
-    dbname: bookstore
+  compress: true
+  dbs:
+    - host: localhost
+      port: 5432
+      username: postgres
+      password: postgres
+      dbname: bookstore
 
 retention:
   enable: true
