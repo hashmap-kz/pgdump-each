@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gopgdump/internal/naming"
 	"gopgdump/internal/ts"
 
 	"gopgdump/config"
@@ -87,9 +86,9 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 	// layout: datetime--host-port--dbname.dmp
 	dumpName := fmt.Sprintf("%s--%s-%d--%s", ts.WorkingTimestamp, db.Host, db.Port, db.Dbname)
 	// need in case backup is failed
-	tmpDest := filepath.Join(cfg.Dest, naming.PgDumpPath, dumpName+".dirty")
+	tmpDest := filepath.Join(cfg.Dest, dumpName+".dirty")
 	// rename to target, if everything is success
-	okDest := filepath.Join(cfg.Dest, naming.PgDumpPath, dumpName+".dmp")
+	okDest := filepath.Join(cfg.Dest, dumpName+".dmp")
 	// prepare directory
 	err = os.MkdirAll(tmpDest, 0o755)
 	if err != nil {
@@ -132,7 +131,7 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 	// execute dump CMD
 	var stdoutBuf, stderrBuf bytes.Buffer
 	cmd := exec.Command("pg_dump", args...)
-	if cfg.PrintLogs {
+	if cfg.PrintDumpLogs {
 		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
 		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
 	} else {

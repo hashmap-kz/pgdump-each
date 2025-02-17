@@ -18,9 +18,10 @@ type Config struct {
 	Dump      PgDumpsConfig
 	Base      PgBaseBackupsConfig
 	Retention RetentionConfig
+	
+	Logger LoggerConfig
 
-	Logger    LoggerConfig
-	PrintLogs bool
+	PrintDumpLogs bool
 }
 
 type PgDumpsConfig struct {

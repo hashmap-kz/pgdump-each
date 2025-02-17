@@ -1,5 +1,5 @@
 dest: "./backups"
-printLogs: true
+printDumpLogs: false
 
 # pg_dump
 dump:
@@ -37,13 +37,13 @@ dump:
       dbname: vault
 
 # pg_basebackup
-base:
-  compress: true
-  dbs:
-    - host: localhost
-      port: 5432
-      username: postgres
-      password: postgres
+#base:
+#  compress: true
+#  dbs:
+#    - host: localhost
+#      port: 5432
+#      username: postgres
+#      password: postgres
 
 retention:
   enable: true

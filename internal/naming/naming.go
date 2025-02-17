@@ -8,12 +8,8 @@ import (
 )
 
 const (
-	TimestampLayout  = "20060102150405"
-	PgDumpPath       = "dump"
-	PgBasebackupPath = "base"
-	PgConfPath       = "conf"
-
-	baseDmpPattern = `^(\d{14})--([a-zA-Z0-9.-]+)-(\d{1,5})--([a-zA-Z_][a-zA-Z0-9_]{0,62})`
+	TimestampLayout = "20060102150405"
+	baseDmpPattern  = `^(\d{14})--([a-zA-Z0-9.-]+)-(\d{1,5})--([a-zA-Z_][a-zA-Z0-9_]{0,62})`
 )
 
 var (
