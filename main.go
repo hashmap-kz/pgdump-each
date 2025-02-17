@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"gopgdump/internal/cleaner"
+
 	"gopgdump/internal/retention"
 
 	"gopgdump/config"
@@ -24,6 +26,10 @@ func main() {
 	err := retention.PurgeOldDirs()
 	if err != nil {
 		slog.Error("retention", slog.String("err", err.Error()))
+	}
+	err = cleaner.DropDirtyDirs()
+	if err != nil {
+		slog.Error("clean", slog.String("err", err.Error()))
 	}
 
 	backup.RunBackup()

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"time"
 
@@ -63,7 +64,7 @@ func PurgeOldDirs() error {
 func findAllBackups() (retainList, error) {
 	result := make(map[string][]retainInfo)
 
-	backups, err := findDumpsDirs()
+	backups, err := findDumpsDirs(naming.BackupDmpRegex)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, k
 	return result, nil
 }
 
-func findDumpsDirs() ([]retainInfo, error) {
+func findDumpsDirs(reg *regexp.Regexp) ([]retainInfo, error) {
 	var dirs []retainInfo
 	cfg := config.Cfg()
 
@@ -117,7 +118,7 @@ func findDumpsDirs() ([]retainInfo, error) {
 			return fmt.Errorf("error accessing path %s: %w", path, err)
 		}
 		basename := filepath.Base(path)
-		if d.IsDir() && path != cfg.Dest && naming.BackupDmpRegex.MatchString(basename) {
+		if d.IsDir() && path != cfg.Dest && reg.MatchString(basename) {
 			ri, err := parseBackupInfo(path)
 			if err != nil {
 				return err
