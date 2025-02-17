@@ -80,8 +80,8 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 		return err
 	}
 
-	// layout: host-port/datetime-dbname
-	hostPortPath := filepath.Join(cfg.Dest, naming.PgDumpPath, fmt.Sprintf("%s-%s.srv", db.Host, db.Port))
+	// layout: host-port.srv/dbname/datetime-dbname.dmp
+	hostPortPath := filepath.Join(cfg.Dest, naming.PgDumpPath, fmt.Sprintf("%s-%s.srv", db.Host, db.Port), db.Dbname)
 	// need in case backup is failed
 	tmpDest := filepath.Join(hostPortPath, fmt.Sprintf("%s-%s.dirty", backupTimestamp, db.Dbname))
 	// rename to target, if everything is success

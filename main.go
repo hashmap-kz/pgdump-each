@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"gopgdump/internal/retention"
 	"log/slog"
 
 	"gopgdump/config"
@@ -18,6 +19,11 @@ func main() {
 	// 1) remove all '*.dirty' dirs, if any
 	// 2) process purge jobs
 	//
+
+	err := retention.PurgeOldDirs()
+	if err != nil {
+		slog.Error("retention", slog.String("err", err.Error()))
+	}
 
 	backup.RunBackup()
 	fmt.Println("All backups completed.")

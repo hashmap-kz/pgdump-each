@@ -9,16 +9,16 @@ import (
 
 func TestHostFolderRegex(t *testing.T) {
 	testCasesCorrect := []string{
-		"example.com-80",      // Valid
-		"sub.example.com-443", // Valid
-		"localhost-3000",      // Valid
-		"127.0.0.1-22",        // Valid
+		"example.com-80.srv",      // Valid
+		"sub.example.com-443.srv", // Valid
+		"localhost-3000.srv",      // Valid
+		"127.0.0.1-22.srv",        // Valid
 	}
 	testCasesIncorrect := []string{
-		"example.com",        // Invalid (missing port)
-		"example.com-",       // Invalid (missing port number)
-		"example.com-655361", // Invalid (port out of range)
-		"-example.com-22",    // Invalid (invalid DNS name)
+		"example.com.srv",        // Invalid (missing port)
+		"example.com-.srv",       // Invalid (missing port number)
+		"example.com-655361.srv", // Invalid (port out of range)
+		"-example.com-22.srv",    // Invalid (invalid DNS name)
 	}
 
 	for _, test := range testCasesCorrect {

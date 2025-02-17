@@ -17,6 +17,12 @@ dump:
       tables: [ ]
       excludeTables: [ ]
 
+    - host: localhost
+      port: 5432
+      username: postgres
+      password: postgres
+      dbname: demo
+
     - host: 10.40.240.189
       port: 5432
       username: postgres
@@ -41,7 +47,7 @@ base:
 
 retention:
   enable: true
-  period: 5d
+  period: 5m
   keepLast: 2
 
 logger:
