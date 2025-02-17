@@ -74,7 +74,7 @@ func dumpDatabase(db config.DatabaseConfig) error {
 	}
 
 	// layout: host-port/datetime-dbname
-	hostPortPath := filepath.Join(cfg.Dest, fmt.Sprintf("%s-%s", db.Host, db.Port))
+	hostPortPath := filepath.Join(cfg.Dest, "dump", fmt.Sprintf("%s-%s.srv", db.Host, db.Port))
 	// need in case backup is failed
 	tmpDest := filepath.Join(hostPortPath, fmt.Sprintf("%s-%s.dirty", backupTimestamp, db.Dbname))
 	// rename to target, if everything is success
