@@ -20,9 +20,16 @@ func PurgeOldDirs() error {
 		return err
 	}
 
-	_, err = findDumpsDirs()
+	dirs, err := findDumpsDirs()
 	if err != nil {
 		return err
+	}
+
+	for _, d := range dirs {
+		_, err := getBackupTimestampFromDirName(d)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -45,4 +52,26 @@ func findDumpsDirs() ([]string, error) {
 	})
 
 	return dirs, err
+}
+
+func getBackupTimestampFromDirName(path string) (time.Time, error) {
+	baseName := filepath.Base(path)
+
+	if !naming.BackupDmpRegex.MatchString(baseName) {
+		return time.Time{}, fmt.Errorf("not a backup dir: %s", baseName)
+	}
+
+	// 20250217135009--localhost-5432--demo.dmp
+
+	submatch := naming.BackupDmpRegex.FindStringSubmatch(baseName)
+	if len(submatch) != 5 {
+		return time.Time{}, fmt.Errorf("not a backup dir: %s", baseName)
+	}
+
+	date, err := time.Parse(naming.TimestampLayout, submatch[1])
+	if err != nil {
+		return time.Time{}, fmt.Errorf("not a backup dir: %s", baseName)
+	}
+
+	return date, nil
 }
