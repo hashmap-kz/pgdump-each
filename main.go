@@ -2,12 +2,17 @@ package main
 
 import (
 	"fmt"
+	"log/slog"
+
+	"gopgdump/config"
+	"gopgdump/pkg/logger"
 
 	"gopgdump/internal/backup"
-	"gopgdump/internal/config"
 )
 
 func main() {
+	slog.SetDefault(logger.InitLogger("text", "debug"))
+
 	// Define your databases here
 	databases := []config.BackupConfig{
 		{

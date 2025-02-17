@@ -4,14 +4,15 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"net/url"
+	"log/slog"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
 	"time"
 
-	"gopgdump/internal/config"
+	"gopgdump/config"
+	"gopgdump/internal/util"
 )
 
 // TODO: these values are configurable
@@ -57,27 +58,17 @@ func worker(databases <-chan config.BackupConfig, wg *sync.WaitGroup) {
 	}
 }
 
-func createConnStr(db config.BackupConfig) (string, error) {
-	connStr := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", db.Username, db.Password, db.Host, db.Port, db.Dbname)
-	if len(db.Opts) > 0 {
-		query := url.Values{}
-		for key, value := range db.Opts {
-			query.Set(key, value)
-		}
-		connStr = connStr + "?" + query.Encode()
-	}
-	parse, err := url.Parse(connStr)
-	if err != nil {
-		return "", err
-	}
-	return parse.String(), nil
-}
-
 // dumpDatabase executes pg_dump for a given database.
 func dumpDatabase(db config.BackupConfig) error {
 	var err error
 
-	connStr, err := createConnStr(db)
+	slog.Info("backup",
+		slog.String("status", "run"),
+		slog.String("server", fmt.Sprintf("%s:%s", db.Host, db.Port)),
+		slog.String("dbname", db.Dbname),
+	)
+
+	connStr, err := util.CreateConnStr(db)
 	if err != nil {
 		return err
 	}
@@ -137,7 +128,7 @@ func dumpDatabase(db config.BackupConfig) error {
 		cmd.Stderr = &stderrBuf
 	}
 	// Set environment variables for authentication
-	cmd.Env = append(cmd.Env, "PGPASSWORD=postgres") // Replace with a secure method
+	cmd.Env = append(cmd.Env, fmt.Sprintf("PGPASSWORD=%s", db.Password))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to dump %s: %v - %s", db.Dbname, err, stderrBuf.String())
 	}
@@ -148,6 +139,11 @@ func dumpDatabase(db config.BackupConfig) error {
 		return fmt.Errorf("cannot rename %s to %s, cause: %w\n", tmpDest, okDest, err)
 	}
 
-	fmt.Printf("Backup completed: %s -> %s\n", db.Dbname, filepath.ToSlash(okDest))
+	slog.Info("backup",
+		slog.String("status", "ok"),
+		slog.String("server", fmt.Sprintf("%s:%s", db.Host, db.Port)),
+		slog.String("dbname", db.Dbname),
+		slog.String("path", filepath.ToSlash(okDest)),
+	)
 	return nil
 }

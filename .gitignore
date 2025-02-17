@@ -16,9 +16,9 @@
  media
 
 # Config files
-internal/config/apple_config_files
-/internal/config/configs.env
-/internal/config/config_file.go
+config/apple_config_files
+/config/configs.env
+/config/config_file.go
 
 # Enviroment files
 envs/
