@@ -39,12 +39,17 @@ func PurgeOldDirs() error {
 		return err
 	}
 
+	keepCnt := cfg.Retention.KeepLast
+	if keepCnt <= 0 {
+		keepCnt = 0
+	}
+
 	allBackups, err := findAllBackups()
 	if err != nil {
 		return err
 	}
 
-	backupsToRetain, err := findBackupsToRetain(retentionPeriod, allBackups)
+	backupsToRetain, err := findBackupsToRetain(allBackups, retentionPeriod, keepCnt)
 	if err != nil {
 		return err
 	}
@@ -71,20 +76,11 @@ func dropBackups(ri []retainInfo) error {
 	return nil
 }
 
-func getKeepCnt() int {
-	cfg := config.Cfg()
-	keep := cfg.Retention.KeepLast
-	if keep <= 0 {
-		return 0
-	}
-	return keep
-}
-
-func findBackupsToRetain(rp time.Duration, rl retainList) ([]retainInfo, error) {
+func findBackupsToRetain(retainList retainList, retentionPeriod time.Duration, keepCnt int) ([]retainInfo, error) {
 	var result []retainInfo
 	currentTime := time.Now()
 
-	for k, v := range rl {
+	for k, v := range retainList {
 
 		// (oldest to newest)
 		sort.SliceStable(v, func(i, j int) bool {
@@ -93,7 +89,7 @@ func findBackupsToRetain(rp time.Duration, rl retainList) ([]retainInfo, error) 
 			return dateI.Before(dateJ)
 		})
 
-		toDelete := len(v) - getKeepCnt()
+		toDelete := len(v) - keepCnt
 		if toDelete <= 0 {
 			slog.Info("purge",
 				slog.String("key", k),
@@ -106,7 +102,7 @@ func findBackupsToRetain(rp time.Duration, rl retainList) ([]retainInfo, error) 
 				if err != nil {
 					return nil, fmt.Errorf("error accessing folder %s: %v", elem.path, err)
 				}
-				if currentTime.Sub(info.ModTime()) > rp {
+				if currentTime.Sub(info.ModTime()) > retentionPeriod {
 					result = append(result, elem)
 				}
 			}
