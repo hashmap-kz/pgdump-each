@@ -10,13 +10,10 @@ const (
 )
 
 var (
-	BackupDmpRegex = regexp.MustCompile(`^(\d{14})-([a-z_][a-z0-9_]{0,62})\.dmp$`)
+	// BackupDmpRegex defines a regex for filter dumps in  target dir
+	// layout: datetime--host-port--dbname.dmp
+	// example: 20250217134506--10.40.240.165-30201--vault.dmp
+	BackupDmpRegex = regexp.MustCompile(`^(\d{14})--([a-zA-Z0-9.-]+)-(\d{1,5})--([a-zA-Z_][a-zA-Z0-9_]{0,62})\.dmp$`)
 
-	DatabaseNameRegex = regexp.MustCompile(`^[a-z_][a-z0-9_]{0,62}$`)
-
-	// Define the regex for DNS name with required port
-	DnsWithPortRegex = regexp.MustCompile(`^(?:(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)\.)*[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?-([0-9]{1,5})\.srv$`)
-	// ..............................................................................................................................................^
-	// we use this pattern for folder names, so the colon was replaced by dash
-	// example: 10.40.240.63-30231.srv
+	DatabaseNameRegex = regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]{0,62}$`)
 )

@@ -2,11 +2,12 @@ package retention
 
 import (
 	"fmt"
-	"gopgdump/config"
-	"gopgdump/internal/naming"
 	"os"
 	"path/filepath"
 	"time"
+
+	"gopgdump/config"
+	"gopgdump/internal/naming"
 )
 
 func PurgeOldDirs() error {
@@ -19,18 +20,11 @@ func PurgeOldDirs() error {
 		return err
 	}
 
-	dirs, err := findDumpsDirs()
+	_, err = findDumpsDirs()
 	if err != nil {
 		return err
 	}
-
-	// host=dump
-	rmap := map[string]string{}
-	for _, d := range dirs {
-		dir := filepath.Dir(d)
-		rmap[dir] = d
-	}
-
+	
 	return nil
 }
 
@@ -43,11 +37,7 @@ func findDumpsDirs() ([]string, error) {
 		if err != nil {
 			return fmt.Errorf("error accessing path %s: %w", path, err)
 		}
-
 		base := filepath.Base(path)
-		if d.IsDir() {
-			fmt.Println(path)
-		}
 		if d.IsDir() && naming.BackupDmpRegex.MatchString(base) {
 			dirs = append(dirs, path)
 		}

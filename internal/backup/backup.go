@@ -9,17 +9,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	"sync"
-	"time"
 
 	"gopgdump/internal/naming"
+	"gopgdump/internal/ts"
 
 	"gopgdump/config"
 	"gopgdump/internal/util"
 )
-
-// remember timestamp for all backups
-// it is easy to sort/retain when all backups in one iteration use one timestamp
-var backupTimestamp = time.Now().Format(naming.TimestampLayout)
 
 func RunBackup() {
 	cfg := config.Cfg()
@@ -57,7 +53,7 @@ func worker(databases <-chan config.PgDumpDatabaseConfig, wg *sync.WaitGroup) {
 			slog.Error("backup",
 				slog.String("status", "error"),
 				slog.String("err", err.Error()),
-				slog.String("server", fmt.Sprintf("%s:%s", db.Host, db.Port)),
+				slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
 				slog.String("dbname", db.Dbname),
 			)
 		}
@@ -71,7 +67,7 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 
 	slog.Info("backup",
 		slog.String("status", "run"),
-		slog.String("server", fmt.Sprintf("%s:%s", db.Host, db.Port)),
+		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
 		slog.String("dbname", db.Dbname),
 	)
 
@@ -80,12 +76,12 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 		return err
 	}
 
-	// layout: host-port.srv/dbname/datetime-dbname.dmp
-	hostPortPath := filepath.Join(cfg.Dest, naming.PgDumpPath, fmt.Sprintf("%s-%s.srv", db.Host, db.Port), db.Dbname)
+	// layout: datetime--host-port--dbname.dmp
+	dumpName := fmt.Sprintf("%s--%s-%d--%s", ts.BackupTimestamp, db.Host, db.Port, db.Dbname)
 	// need in case backup is failed
-	tmpDest := filepath.Join(hostPortPath, fmt.Sprintf("%s-%s.dirty", backupTimestamp, db.Dbname))
+	tmpDest := filepath.Join(cfg.Dest, naming.PgDumpPath, dumpName+".dirty")
 	// rename to target, if everything is success
-	okDest := filepath.Join(hostPortPath, fmt.Sprintf("%s-%s.dmp", backupTimestamp, db.Dbname))
+	okDest := filepath.Join(cfg.Dest, naming.PgDumpPath, dumpName+".dmp")
 	// prepare directory
 	err = os.MkdirAll(tmpDest, 0o755)
 	if err != nil {
@@ -148,7 +144,7 @@ func dumpDatabase(db config.PgDumpDatabaseConfig) error {
 
 	slog.Info("backup",
 		slog.String("status", "ok"),
-		slog.String("server", fmt.Sprintf("%s:%s", db.Host, db.Port)),
+		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
 		slog.String("dbname", db.Dbname),
 		slog.String("path", filepath.ToSlash(okDest)),
 	)

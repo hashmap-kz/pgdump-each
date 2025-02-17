@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"gopgdump/internal/retention"
 	"log/slog"
+
+	"gopgdump/internal/retention"
 
 	"gopgdump/config"
 	"gopgdump/pkg/logger"

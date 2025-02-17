@@ -35,7 +35,7 @@ type PgBaseBackupsConfig struct {
 
 type PgBaseBackupDatabaseConfig struct {
 	Host     string
-	Port     string
+	Port     int
 	Username string
 	Password string
 	Opts     map[string]string
@@ -44,7 +44,7 @@ type PgBaseBackupDatabaseConfig struct {
 type PgDumpDatabaseConfig struct {
 	// postgres://username:password@host:port/dbname?connect_timeout=5&sslmode=disable
 	Host     string
-	Port     string
+	Port     int
 	Username string
 	Password string
 	Dbname   string
