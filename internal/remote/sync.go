@@ -19,10 +19,19 @@ type uploadTask struct {
 }
 
 func SyncLocalWithRemote() error {
-	// skip errors
-	_ = uploadSftp()
-	_ = uploadS3()
-	return nil
+	var err error
+
+	err = uploadSftp()
+	if err != nil {
+		slog.Error("remote", slog.String("sync-error", err.Error()))
+	}
+
+	err = uploadS3()
+	if err != nil {
+		slog.Error("remote", slog.String("sync-error", err.Error()))
+	}
+
+	return err
 }
 
 // common routine for all remotes
