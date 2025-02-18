@@ -18,13 +18,12 @@ var (
 )
 
 type Config struct {
-	Dest      string
-	Dump      PgDumpsConfig
-	Base      PgBaseBackupsConfig
-	Retention RetentionConfig
-
-	Logger LoggerConfig
-
+	Dest          string
+	Dump          PgDumpsConfig
+	Base          PgBaseBackupsConfig
+	Retention     RetentionConfig
+	Upload        UploadConfig
+	Logger        LoggerConfig
 	PrintDumpLogs bool
 }
 
@@ -73,6 +72,26 @@ type LoggerConfig struct {
 	Level  string
 }
 
+type UploadConfig struct {
+	RetryAttempts  int
+	MaxConcurrency int
+	Sftp           UploadSftpConfig
+}
+
+type UploadSftpConfig struct {
+	Enable bool
+
+	// Required
+	Dest     string
+	Host     string
+	Port     string
+	User     string
+	PkeyPath string
+
+	// Optional, it private key is created with a passphrase
+	Passphrase string
+}
+
 // LoadConfigFromFile unmarshal file into config struct
 func LoadConfigFromFile(filename string) *Config {
 	once.Do(func() {
@@ -112,7 +131,27 @@ func LoadConfig(content []byte) *Config {
 	return config
 }
 
+// check everything that needs to be set, etc...
 func checkConfigHard() {
+	checkNoDuplicateAmongHosts()
+	checkSftpConfig()
+}
+
+func checkSftpConfig() {
+	if !config.Upload.Sftp.Enable {
+		return
+	}
+	s := config.Upload.Sftp
+	if s.Dest == "" ||
+		s.Host == "" ||
+		s.Port == "" ||
+		s.User == "" ||
+		s.PkeyPath == "" {
+		log.Fatalf("sftp-config not fully set-up, check all required values are set")
+	}
+}
+
+func checkNoDuplicateAmongHosts() {
 	// must not be duplicates: host+port+dbname
 	m := map[string]string{}
 	for _, db := range config.Dump.DBS {

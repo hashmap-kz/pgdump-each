@@ -61,7 +61,7 @@ logger:
 
 upload:
   retryAttempts: 2
-  jobs: 8
+  maxConcurrency: 8
   sftp:
     enable: true
     host: "10.40.240.194"
