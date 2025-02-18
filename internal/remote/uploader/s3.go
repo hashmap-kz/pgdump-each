@@ -80,17 +80,6 @@ func (s *S3Storage) Upload(localFilePath, remoteFilePath string) error {
 	return nil
 }
 
-func (s *S3Storage) Delete(path string) error {
-	_, err := s.client.DeleteObject(context.TODO(), &s3.DeleteObjectInput{
-		Bucket: aws.String(s.bucketName),
-		Key:    aws.String(path),
-	})
-	if err != nil {
-		return fmt.Errorf("unable to delete file from S3: %w", err)
-	}
-	return nil
-}
-
 func (s *S3Storage) DeleteAll(prefix string) error {
 	ctx := context.Background()
 
@@ -136,7 +125,7 @@ func (s *S3Storage) DeleteAll(prefix string) error {
 	return nil
 }
 
-func (s *S3Storage) ListObjects(prefix string) ([]string, error) {
+func (s *S3Storage) ListObjects() ([]string, error) {
 	objects := []string{}
 	var continuationToken *string
 
@@ -144,7 +133,6 @@ func (s *S3Storage) ListObjects(prefix string) ([]string, error) {
 		// Prepare the input for ListObjectsV2
 		input := &s3.ListObjectsV2Input{
 			Bucket:            aws.String(s.bucketName),
-			Prefix:            aws.String(prefix),
 			ContinuationToken: continuationToken,
 		}
 
@@ -172,10 +160,9 @@ func (s *S3Storage) ListObjects(prefix string) ([]string, error) {
 	return objects, nil
 }
 
-func (s *S3Storage) ListTopLevelDirs(prefix string, reg *regexp.Regexp) ([]string, error) {
+func (s *S3Storage) ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
 	input := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(s.bucketName),
-		Prefix:    aws.String(prefix),
 		Delimiter: aws.String("/"), // Groups results by prefix (like top-level directories)
 	}
 

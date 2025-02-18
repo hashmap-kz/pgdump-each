@@ -125,10 +125,10 @@ func sftpDirExists(client *sftp.Client, path string) (bool, error) {
 }
 
 // ListObjects recursively lists all files and directories under the specified remote directory
-func (s *SFTPStorage) ListObjects(path string) ([]string, error) {
+func (s *SFTPStorage) ListObjects() ([]string, error) {
 	objects := []string{}
 
-	exists, err := sftpDirExists(s.sftpClient, path)
+	exists, err := sftpDirExists(s.sftpClient, s.config.Dest)
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (s *SFTPStorage) ListObjects(path string) ([]string, error) {
 		return objects, nil
 	}
 
-	walker := s.sftpClient.Walk(path)
+	walker := s.sftpClient.Walk(s.config.Dest)
 	for walker.Step() {
 		if err := walker.Err(); err != nil {
 			return nil, fmt.Errorf("error walking directory: %w", err)
@@ -144,8 +144,7 @@ func (s *SFTPStorage) ListObjects(path string) ([]string, error) {
 		if walker.Stat().IsDir() {
 			continue
 		}
-		// Collect the full path of the current file/directory
-		if walker.Path() != path {
+		if walker.Path() != s.config.Dest {
 			objects = append(objects, walker.Path())
 		}
 	}
@@ -153,11 +152,11 @@ func (s *SFTPStorage) ListObjects(path string) ([]string, error) {
 	return objects, nil
 }
 
-func (s *SFTPStorage) ListTopLevelDirs(path string, reg *regexp.Regexp) ([]string, error) {
+func (s *SFTPStorage) ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
 	var dirs []string
 
 	// Read the directory contents
-	entries, err := s.sftpClient.ReadDir(path)
+	entries, err := s.sftpClient.ReadDir(s.config.Dest)
 	if err != nil {
 		return nil, err
 	}
@@ -172,20 +171,17 @@ func (s *SFTPStorage) ListTopLevelDirs(path string, reg *regexp.Regexp) ([]strin
 	return dirs, nil
 }
 
-func (s *SFTPStorage) Delete(path string) error {
-	err := s.sftpClient.Remove(path)
-	if err != nil {
-		return fmt.Errorf("failed to remove file: %s, %w", path, err)
-	}
-	return nil
-}
-
 func (s *SFTPStorage) DeleteAll(path string) error {
-	err := s.sftpClient.RemoveAll(path)
+	filePath := filepath.ToSlash(filepath.Join(s.config.Dest, path))
+	fileStat, err := s.sftpClient.Stat(filePath)
 	if err != nil {
-		return fmt.Errorf("failed to remove file: %s, %w", path, err)
+		return err
 	}
-	return nil
+	if fileStat.IsDir() {
+		return s.sftpClient.RemoveAll(filePath)
+	} else {
+		return s.sftpClient.Remove(filePath)
+	}
 }
 
 // Close closes the SFTP connection

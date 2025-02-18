@@ -42,17 +42,14 @@ func SyncLocalWithRemote() error {
 // common routine for all remotes
 
 func deleteOnRemote(u uploader.Uploader) error {
-	cfg := config.Cfg()
-	dest := getDest(u)
-
 	// get remote dirs
-	topLevelRemoteDirs, err := u.ListTopLevelDirs(dest, naming.BackupDmpRegex)
+	topLevelRemoteDirs, err := u.ListTopLevelDirs(naming.BackupDmpRegex)
 	if err != nil {
 		return err
 	}
 
 	// get local dirs
-	topLevelLocalDirs, err := fio.ListTopLevelDirs(cfg.Dest, naming.BackupDmpRegex)
+	topLevelLocalDirs, err := local.ListTopLevelDirs(naming.BackupDmpRegex)
 	if err != nil {
 		return err
 	}
@@ -64,7 +61,7 @@ func deleteOnRemote(u uploader.Uploader) error {
 	// remove dirs on remote, that are not present locally
 	for _, remoteDirName := range topLevelRemoteDirs {
 		if !localIndex[remoteDirName] {
-			err := u.DeleteAll(filepath.ToSlash(filepath.Join(dest, remoteDirName)))
+			err := u.DeleteAll(filepath.ToSlash(remoteDirName))
 			if err != nil {
 				slog.Error("remote",
 					slog.String("action", "rm -rf"),
@@ -106,7 +103,7 @@ func getFilesToUpload(u uploader.Uploader) ([]uploadTask, error) {
 	dest := getDest(u)
 
 	// local and remote backups
-	remoteFiles, err := u.ListObjects(dest)
+	remoteFiles, err := u.ListObjects()
 	if err != nil {
 		return nil, err
 	}

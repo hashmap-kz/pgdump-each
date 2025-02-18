@@ -34,6 +34,22 @@ func FindAllBackups() (BackupIndex, error) {
 	return result, nil
 }
 
+func ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
+	var dirs []string
+	cfg := config.Cfg()
+
+	entries, err := os.ReadDir(cfg.Dest)
+	if err != nil {
+		return nil, err
+	}
+	for _, entry := range entries {
+		if entry.IsDir() && reg.MatchString(entry.Name()) {
+			dirs = append(dirs, entry.Name())
+		}
+	}
+	return dirs, nil
+}
+
 func findDumpsDirs(reg *regexp.Regexp) ([]BackupEntry, error) {
 	var dirs []BackupEntry
 	cfg := config.Cfg()

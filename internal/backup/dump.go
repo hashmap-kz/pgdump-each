@@ -116,7 +116,7 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 
 	args := []string{
 		"--dbname=" + connStr,
-		"--file=" + tmpDest + "/data",
+		"--file=" + tmpDest,
 		"--format=directory",
 		"--jobs=" + fmt.Sprintf("%d", jobs),
 		"--compress=1",
