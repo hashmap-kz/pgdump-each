@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strings"
 
 	cnfg "gopgdump/config"
 
@@ -183,7 +184,14 @@ func (s *S3Storage) ListTopLevelDirs(path string, reg *regexp.Regexp) ([]string,
 	// Extract top-level prefixes (directories)
 	var prefixes []string
 	for _, prefix := range output.CommonPrefixes {
-		prefixes = append(prefixes, *prefix.Prefix) // Extract the directory name
+		if prefix.Prefix == nil {
+			continue
+		}
+		prefixClean := strings.TrimSuffix(*prefix.Prefix, "/")
+		if !reg.MatchString(prefixClean) {
+			continue
+		}
+		prefixes = append(prefixes, prefixClean)
 	}
 
 	return prefixes, nil
