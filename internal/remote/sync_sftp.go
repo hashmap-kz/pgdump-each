@@ -7,6 +7,8 @@ import (
 )
 
 func uploadSftp() error {
+	var err error
+
 	cfg := config.Cfg()
 	sftpConfig := cfg.Upload.Sftp
 	if !sftpConfig.Enable {
@@ -18,8 +20,8 @@ func uploadSftp() error {
 		return err
 	}
 
-	_ = uploadOnRemote(u)
-	_ = deleteOnRemote(u)
+	err = uploadOnRemote(u)
+	err = deleteOnRemote(u)
 
-	return nil
+	return err
 }

@@ -99,8 +99,8 @@ type UploadSftpConfig struct {
 type UploadS3Config struct {
 	Enable bool
 
-	EndpointUrl     string
-	AccessKeyId     string
+	EndpointURL     string
+	AccessKeyID     string
 	SecretAccessKey string
 	Bucket          string
 	Region          string
@@ -173,8 +173,8 @@ func checkS3Config() {
 	if !s.Enable {
 		return
 	}
-	if s.EndpointUrl == "" ||
-		s.AccessKeyId == "" ||
+	if s.EndpointURL == "" ||
+		s.AccessKeyID == "" ||
 		s.SecretAccessKey == "" ||
 		s.Bucket == "" {
 		log.Fatalf("s3-config not fully set-up, check all required values are set")

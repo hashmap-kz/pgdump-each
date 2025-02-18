@@ -39,7 +39,7 @@ func NewS3Storage(c cnfg.UploadConfig) (*S3Storage, error) {
 	cfg, err := config.LoadDefaultConfig(
 		context.Background(),
 		config.WithRegion(s3Config.Region),
-		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(s3Config.AccessKeyId, s3Config.SecretAccessKey, "")),
+		config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(s3Config.AccessKeyID, s3Config.SecretAccessKey, "")),
 		config.WithHTTPClient(&http.Client{Transport: &http.Transport{ // <--- here
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: s3Config.DisableSSL}}}),
 	)
@@ -48,7 +48,7 @@ func NewS3Storage(c cnfg.UploadConfig) (*S3Storage, error) {
 	}
 
 	client := s3.NewFromConfig(cfg, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(s3Config.EndpointUrl)
+		o.BaseEndpoint = aws.String(s3Config.EndpointURL)
 		o.UsePathStyle = s3Config.UsePathStyle
 	})
 
@@ -155,8 +155,10 @@ func (s *S3Storage) ListObjects(prefix string) ([]string, error) {
 		}
 
 		// Collect object keys
-		for _, obj := range output.Contents {
-			objects = append(objects, *obj.Key)
+		if output != nil {
+			for _, obj := range output.Contents {
+				objects = append(objects, *obj.Key)
+			}
 		}
 
 		// Check if there are more results

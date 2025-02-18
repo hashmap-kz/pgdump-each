@@ -14,6 +14,8 @@ import (
 	"gopgdump/pkg/logger"
 
 	"gopgdump/internal/backup"
+
+	_ "github.com/jackc/pgx/v5"
 )
 
 func main() {

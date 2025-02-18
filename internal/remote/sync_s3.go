@@ -7,6 +7,8 @@ import (
 )
 
 func uploadS3() error {
+	var err error
+
 	cfg := config.Cfg()
 	s3Config := cfg.Upload.S3
 	if !s3Config.Enable {
@@ -18,8 +20,8 @@ func uploadS3() error {
 		return nil
 	}
 
-	_ = uploadOnRemote(u)
-	_ = deleteOnRemote(u)
+	err = uploadOnRemote(u)
+	err = deleteOnRemote(u)
 
-	return nil
+	return err
 }

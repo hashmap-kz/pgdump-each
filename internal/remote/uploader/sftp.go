@@ -190,7 +190,7 @@ func (s *SFTPStorage) DeleteAll(path string) error {
 
 // Close closes the SFTP connection
 func (s *SFTPStorage) Close() error {
-	var err error = nil
+	var err error
 	if s.sftpClient != nil {
 		err = s.sftpClient.Close()
 	}

@@ -133,7 +133,7 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 	// if everything is ok, just rename a temporary dir into the target one
 	err = os.Rename(tmpDest, okDest)
 	if err != nil {
-		return fmt.Errorf("cannot rename %s to %s, cause: %w\n", tmpDest, okDest, err)
+		return fmt.Errorf("cannot rename %s to %s, cause: %w", tmpDest, okDest, err)
 	}
 
 	slog.Info("backup",
