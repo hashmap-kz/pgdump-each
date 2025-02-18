@@ -12,7 +12,7 @@ import (
 
 	"gopgdump/internal/connstr"
 
-	"gopgdump/internal/ts"
+	"gopgdump/internal/timestamp"
 
 	"gopgdump/config"
 )
@@ -97,7 +97,7 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 	}
 
 	// layout: datetime--host-port--dbname.dmp
-	dumpName := fmt.Sprintf("%s--%s-%d--%s", ts.WorkingTimestamp, db.Host, db.Port, db.Dbname)
+	dumpName := fmt.Sprintf("%s--%s-%d--%s", timestamp.WorkingTimestamp, db.Host, db.Port, db.Dbname)
 	// need in case backup is failed
 	tmpDest := filepath.Join(cfg.Dest, dumpName+".dirty")
 	// rename to target, if everything is success
