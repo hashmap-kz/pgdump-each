@@ -51,19 +51,24 @@ func uploadSftp() error {
 	// upload on remote
 	for localFile := range relativeMapLocal {
 		if !relativeMapRemote[localFile] {
-			remotePathToUpload := filepath.ToSlash(fmt.Sprintf("%s/%s", cfg.Upload.Sftp.Dest, localFile))
-			err := sftpUploader.Upload(filepath.Join(cfg.Dest, localFile), remotePathToUpload)
+			// make actual paths from relatives (we compare relatives, but working with actual)
+			localFilePath := filepath.Join(cfg.Dest, localFile)
+			remoteFilePath := filepath.ToSlash(fmt.Sprintf("%s/%s", cfg.Upload.Sftp.Dest, localFile))
+
+			err := sftpUploader.Upload(localFilePath, remoteFilePath)
 			if err != nil {
 				slog.Error("remote",
 					slog.String("action", "upload"),
+					slog.String("remote-path", remoteFilePath),
 					slog.String("status", "err"),
 					slog.String("err", err.Error()),
 				)
 			} else {
 				slog.Debug("remote",
 					slog.String("action", "upload"),
+					slog.String("remote-path", remoteFilePath),
 					slog.String("status", "ok"),
-					slog.String("path", remotePathToUpload),
+					slog.String("path", remoteFilePath),
 				)
 			}
 		}
