@@ -29,10 +29,10 @@ func SyncLocalWithRemote() error {
 
 func deleteOnRemote(u uploader.Uploader) error {
 	cfg := config.Cfg()
-	sftpConfig := cfg.Upload.Sftp
+	dest := getDest(u)
 
 	// get remote dirs
-	topLevelRemoteDirs, err := u.ListTopLevelDirs(sftpConfig.Dest, naming.BackupDmpRegex)
+	topLevelRemoteDirs, err := u.ListTopLevelDirs(dest, naming.BackupDmpRegex)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func deleteOnRemote(u uploader.Uploader) error {
 	// remove dirs on remote, that are not present locally
 	for _, remoteDirName := range topLevelRemoteDirs {
 		if !localIndex[remoteDirName] {
-			err := u.DeleteAll(filepath.ToSlash(filepath.Join(sftpConfig.Dest, remoteDirName)))
+			err := u.DeleteAll(filepath.ToSlash(filepath.Join(dest, remoteDirName)))
 			if err != nil {
 				slog.Error("remote",
 					slog.String("action", "rm -rf"),

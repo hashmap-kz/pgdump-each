@@ -170,23 +170,11 @@ func (s *S3Storage) ListObjects(prefix string) ([]string, error) {
 	return objects, nil
 }
 
-func (s *S3Storage) ListTopLevelDirs(path string, reg *regexp.Regexp) ([]string, error) {
+func (s *S3Storage) ListTopLevelDirs(prefix string, reg *regexp.Regexp) ([]string, error) {
 	input := &s3.ListObjectsV2Input{
-		Bucket:    aws.String(path),
+		Bucket:    aws.String(s.bucketName),
+		Prefix:    aws.String(prefix),
 		Delimiter: aws.String("/"), // Groups results by prefix (like top-level directories)
-	}
-
-	// bucket with prefix
-	if strings.Contains(path, "/") {
-		parts := strings.Split(path, "/")
-		if len(parts) != 2 {
-			return nil, fmt.Errorf("unexpected path format for s3: %s", path)
-		}
-		input = &s3.ListObjectsV2Input{
-			Bucket:    aws.String(parts[0]),
-			Prefix:    aws.String(parts[1]),
-			Delimiter: aws.String("/"), // Groups results by prefix (like top-level directories)
-		}
 	}
 
 	output, err := s.client.ListObjectsV2(context.TODO(), input)
