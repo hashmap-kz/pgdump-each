@@ -11,11 +11,12 @@ import (
 )
 
 type BackupEntry struct {
+	Path       string
 	AbsPath    string
 	BackupInfo naming.BackupInfo
 }
 
-// host+port+dbname=[]backups
+// BackupIndex host+port+dbname=[]backups
 type BackupIndex map[string][]BackupEntry
 
 func FindAllBackups() (BackupIndex, error) {
@@ -69,6 +70,7 @@ func parseBackupInfo(path string) (BackupEntry, error) {
 	}
 
 	return BackupEntry{
+		Path:       path,
 		AbsPath:    absPath,
 		BackupInfo: backupInfo,
 	}, nil
