@@ -37,16 +37,16 @@ dump:
       dbname: vault
 
 # pg_basebackup
-base:
-  compress: true
-  clusters:
-    - host: localhost
-      port: 5432
-      username: postgres
-      password: postgres
-      opts:
-        connect_timeout: "5"
-        sslmode: "disable"
+#base:
+#  compress: true
+#  clusters:
+#    - host: localhost
+#      port: 5432
+#      username: postgres
+#      password: postgres
+#      opts:
+#        connect_timeout: "5"
+#        sslmode: "disable"
 
 retention:
   enable: true

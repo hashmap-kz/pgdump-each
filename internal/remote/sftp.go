@@ -1,4 +1,4 @@
-package uploader
+package remote
 
 import (
 	"fmt"
@@ -112,9 +112,28 @@ func (s *SFTPStorage) Upload(localPath, remotePath string) error {
 	return nil
 }
 
-// WalkDir recursively lists all files and directories under the specified remote directory
+func sftpDirExists(client *sftp.Client, path string) (bool, error) {
+	info, err := client.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil // Directory does not exist
+		}
+		return false, err // Other error
+	}
+	return info.IsDir(), nil // Return true if it's a directory
+}
+
+// ListObjects recursively lists all files and directories under the specified remote directory
 func (s *SFTPStorage) ListObjects(path string) ([]string, error) {
 	objects := []string{}
+
+	exists, err := sftpDirExists(s.sftpClient, path)
+	if err != nil {
+		return nil, err
+	}
+	if !exists {
+		return objects, nil
+	}
 
 	walker := s.sftpClient.Walk(path)
 	for walker.Step() {
