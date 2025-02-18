@@ -1,6 +1,8 @@
 package remote
 
 import (
+	"fmt"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -46,15 +48,44 @@ func uploadSftp() error {
 		return err
 	}
 
-	// sync
+	// upload on remote
 	for localFile := range relativeMapLocal {
 		if !relativeMapRemote[localFile] {
-			// TODO: upload to remote
+			remotePathToUpload := filepath.ToSlash(fmt.Sprintf("%s/%s", cfg.Upload.Sftp.Dest, localFile))
+			err := sftpUploader.Upload(filepath.Join(cfg.Dest, localFile), remotePathToUpload)
+			if err != nil {
+				slog.Error("remote",
+					slog.String("action", "upload"),
+					slog.String("status", "err"),
+					slog.String("err", err.Error()),
+				)
+			} else {
+				slog.Debug("remote",
+					slog.String("action", "upload"),
+					slog.String("status", "ok"),
+					slog.String("path", remotePathToUpload),
+				)
+			}
 		}
 	}
+	// remove on remote
 	for remoteFile := range relativeMapRemote {
 		if !relativeMapLocal[remoteFile] {
-			// TODO: delete from remote
+			remotePathToRm := filepath.ToSlash(fmt.Sprintf("%s/%s", cfg.Upload.Sftp.Dest, remoteFile))
+			err := sftpUploader.Delete(remotePathToRm)
+			if err != nil {
+				slog.Error("remote",
+					slog.String("action", "rm"),
+					slog.String("status", "err"),
+					slog.String("err", err.Error()),
+				)
+			} else {
+				slog.Debug("remote",
+					slog.String("action", "rm"),
+					slog.String("status", "ok"),
+					slog.String("path", remotePathToRm),
+				)
+			}
 		}
 	}
 
