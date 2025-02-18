@@ -21,6 +21,11 @@ type uploadTask struct {
 func SyncLocalWithRemote() error {
 	var err error
 
+	cfg := config.Cfg()
+	if !cfg.Upload.Enable {
+		return nil
+	}
+
 	err = uploadSftp()
 	if err != nil {
 		slog.Error("remote", slog.String("sync-error", err.Error()))

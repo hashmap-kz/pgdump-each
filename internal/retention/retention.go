@@ -82,7 +82,8 @@ func filterBackupsToRetain(retainList local.BackupIndex, retentionPeriod time.Du
 func dropBackups(ri []local.BackupEntry) error {
 	for _, elem := range ri {
 		slog.Info("purge",
-			slog.String("msg", "rm -rf"),
+			slog.String("action", "rm -rf"),
+			slog.String("storage", "local"),
 			slog.String("path", filepath.ToSlash(elem.AbsPath)),
 		)
 		err := os.RemoveAll(elem.AbsPath)

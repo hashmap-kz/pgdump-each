@@ -76,6 +76,7 @@ type LoggerConfig struct {
 }
 
 type UploadConfig struct {
+	Enable         bool
 	RetryAttempts  int
 	MaxConcurrency int
 	Sftp           UploadSftpConfig
@@ -155,6 +156,9 @@ func checkConfigHard() {
 }
 
 func checkSftpConfig() {
+	if !config.Upload.Enable {
+		return
+	}
 	s := config.Upload.Sftp
 	if !s.Enable {
 		return
@@ -169,6 +173,9 @@ func checkSftpConfig() {
 }
 
 func checkS3Config() {
+	if !config.Upload.Enable {
+		return
+	}
 	s := config.Upload.S3
 	if !s.Enable {
 		return

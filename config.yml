@@ -63,6 +63,7 @@ logger:
   level: debug
 
 upload:
+  enable: false
   retryAttempts: 2
   maxConcurrency: 8
   sftp:
