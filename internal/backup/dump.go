@@ -10,14 +10,19 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gopgdump/internal/ts"
+	"gopgdump/internal/connstr"
+
+	"gopgdump/internal/timestamp"
 
 	"gopgdump/config"
-	"gopgdump/internal/util"
 )
 
 func RunPgDumps() {
 	cfg := config.Cfg()
+	if !cfg.Dump.Enable {
+		return
+	}
+
 	databases := cfg.Dump.DBS
 
 	// Number of concurrent workers
@@ -83,13 +88,20 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 		slog.Int("jobs", jobs),
 	)
 
-	connStr, err := util.CreateConnStr(db)
+	connStr, err := connstr.CreateConnStr(connstr.ConnStr{
+		Host:     db.Host,
+		Port:     db.Port,
+		Username: db.Username,
+		Password: db.Password,
+		Dbname:   db.Dbname,
+		Opts:     db.Opts,
+	})
 	if err != nil {
 		return err
 	}
 
 	// layout: datetime--host-port--dbname.dmp
-	dumpName := fmt.Sprintf("%s--%s-%d--%s", ts.WorkingTimestamp, db.Host, db.Port, db.Dbname)
+	dumpName := fmt.Sprintf("%s--%s-%d--%s", timestamp.WorkingTimestamp, db.Host, db.Port, db.Dbname)
 	// need in case backup is failed
 	tmpDest := filepath.Join(cfg.Dest, dumpName+".dirty")
 	// rename to target, if everything is success
@@ -104,7 +116,7 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 
 	args := []string{
 		"--dbname=" + connStr,
-		"--file=" + tmpDest,
+		"--file=" + tmpDest + "/data",
 		"--format=directory",
 		"--jobs=" + fmt.Sprintf("%d", jobs),
 		"--compress=1",

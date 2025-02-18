@@ -10,14 +10,18 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gopgdump/internal/util"
+	"gopgdump/internal/connstr"
 
 	"gopgdump/config"
-	"gopgdump/internal/ts"
+	"gopgdump/internal/timestamp"
 )
 
 func RunPgBasebackups() {
 	cfg := config.Cfg()
+	if !cfg.Base.Enable {
+		return
+	}
+
 	clusters := cfg.Base.Clusters
 
 	// Number of concurrent workers
@@ -74,13 +78,19 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 		slog.String("cluster", fmt.Sprintf("%s:%d", cluster.Host, cluster.Port)),
 	)
 
-	connStrBasebackup, err := util.CreateConnStrBasebackup(cluster)
+	connStrBasebackup, err := connstr.CreateConnStr(connstr.ConnStr{
+		Host:     cluster.Host,
+		Port:     cluster.Port,
+		Username: cluster.Username,
+		Password: cluster.Password,
+		Opts:     cluster.Opts,
+	})
 	if err != nil {
 		return err
 	}
 
 	// layout: datetime--host-port--dbname.dmp
-	dumpName := fmt.Sprintf("%s--%s-%d--__pg_basebackup__", ts.WorkingTimestamp, cluster.Host, cluster.Port)
+	dumpName := fmt.Sprintf("%s--%s-%d--__pg_basebackup__", timestamp.WorkingTimestamp, cluster.Host, cluster.Port)
 	// need in case backup is failed
 	tmpDest := filepath.Join(cfg.Dest, dumpName+".dirty")
 	// rename to target, if everything is success
@@ -95,7 +105,7 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 
 	args := []string{
 		"--dbname=" + connStrBasebackup,
-		"--pgdata=" + tmpDest,
+		"--pgdata=" + tmpDest + "/data",
 		"--checkpoint=fast",
 		"--progress",
 		"--no-password",
@@ -127,7 +137,7 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 	// if everything is ok, just rename a temporary dir into the target one
 	err = os.Rename(tmpDest, okDest)
 	if err != nil {
-		return fmt.Errorf("cannot rename %s to %s, cause: %w\n", tmpDest, okDest, err)
+		return fmt.Errorf("cannot rename %s to %s, cause: %w", tmpDest, okDest, err)
 	}
 
 	slog.Info("backup",

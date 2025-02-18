@@ -3,7 +3,11 @@ printDumpLogs: false
 
 # pg_dump
 dump:
+  enable: true
   jobs: 5
+  dumpGlobals: true
+  dumpConfigs: true
+  saveDumpLog: true
   dbs:
     - host: localhost
       port: 5432
@@ -38,6 +42,7 @@ dump:
 
 # pg_basebackup
 base:
+  enable: false
   compress: true
   clusters:
     - host: localhost
@@ -60,8 +65,9 @@ logger:
   level: debug
 
 upload:
+  enable: false
   retryAttempts: 2
-  jobs: 8
+  maxConcurrency: 8
   sftp:
     enable: true
     host: "10.40.240.194"
@@ -70,9 +76,6 @@ upload:
     pkeyPath: "${SSH_PKEY}"
     passphrase: ""
     dest: "/home/ansible/backups"
-    # if set, all local rules will also be applied to remote storage
-    # it means, that remote will be synced with local
-    keepSyncedWithLocalRetention: true
   s3:
     enable: true
     endpointUrl: "${AWS_ENDPOINT_URL}"
@@ -82,7 +85,3 @@ upload:
     region: "main"
     usePathStyle: true
     disableSSL: true
-    prefix: ""
-    # if set, all local rules will also be applied to remote storage
-    # it means, that remote will be synced with local
-    keepSyncedWithLocalRetention: true
