@@ -74,19 +74,14 @@ func deleteOnRemote(u uploader.Uploader) error {
 
 func getDest(u uploader.Uploader) string {
 	cfg := config.Cfg()
-	s3Config := cfg.Upload.S3
-	sftpConfig := cfg.Upload.Sftp
 
 	if u.GetType() == uploader.S3UploaderType {
-		if s3Config.Prefix != "" {
-			return s3Config.Prefix
-		}
 		// bucket-level
 		return ""
 	}
 
 	if u.GetType() == uploader.SftpUploaderType {
-		return sftpConfig.Dest
+		return cfg.Upload.Sftp.Dest
 	}
 
 	return ""

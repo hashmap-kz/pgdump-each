@@ -82,4 +82,3 @@ upload:
     region: "main"
     usePathStyle: true
     disableSSL: true
-    prefix: ""

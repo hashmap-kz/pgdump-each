@@ -106,10 +106,6 @@ type UploadS3Config struct {
 	Region          string
 	UsePathStyle    bool
 	DisableSSL      bool
-
-	// Optional, additional prefix to where the store backups inside bucket
-	// Recommended, if your bucket is used not only for backups
-	Prefix string
 }
 
 // LoadConfigFromFile unmarshal file into config struct
