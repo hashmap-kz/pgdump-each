@@ -95,7 +95,7 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 
 	args := []string{
 		"--dbname=" + connStrBasebackup,
-		"--pgdata=" + tmpDest,
+		"--pgdata=" + tmpDest + "/data",
 		"--checkpoint=fast",
 		"--progress",
 		"--no-password",

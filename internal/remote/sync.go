@@ -125,7 +125,7 @@ func uploadOnRemote(
 	var wg sync.WaitGroup
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
-		go uploadWorker(sftpUploader, uploadTasksCh, &wg)
+		go uploadWorker(i, sftpUploader, uploadTasksCh, &wg)
 	}
 	for _, db := range filesToUploadOnRemote {
 		uploadTasksCh <- db
@@ -134,7 +134,7 @@ func uploadOnRemote(
 	wg.Wait()
 }
 
-func uploadWorker(uploader Uploader, tasks <-chan uploadTask, wg *sync.WaitGroup) {
+func uploadWorker(worker int, uploader Uploader, tasks <-chan uploadTask, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for t := range tasks {
@@ -142,6 +142,7 @@ func uploadWorker(uploader Uploader, tasks <-chan uploadTask, wg *sync.WaitGroup
 		if err != nil {
 			slog.Error("remote",
 				slog.String("action", "upload"),
+				slog.Int("worker", worker),
 				slog.String("local-path", filepath.ToSlash(t.localPath)),
 				slog.String("remote-path", filepath.ToSlash(t.remotePath)),
 				slog.String("err", err.Error()),
@@ -149,6 +150,7 @@ func uploadWorker(uploader Uploader, tasks <-chan uploadTask, wg *sync.WaitGroup
 		} else {
 			slog.Debug("remote",
 				slog.String("action", "upload"),
+				slog.Int("worker", worker),
 				slog.String("local-path", filepath.ToSlash(t.localPath)),
 				slog.String("remote-path", filepath.ToSlash(t.remotePath)),
 				slog.String("status", "ok"),
