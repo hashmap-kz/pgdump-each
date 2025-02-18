@@ -2,6 +2,7 @@ package remote
 
 import (
 	"gopgdump/config"
+	"gopgdump/internal/local"
 )
 
 func SyncLocalWithRemote() error {
@@ -20,9 +21,17 @@ func uploadSftp() error {
 		return err
 	}
 
+	// remote backups
 	_, err = sftpUploader.ListObjects(cfg.Upload.Sftp.Dest)
 	if err != nil {
 		return err
 	}
+
+	// local backups
+	_, err = local.FindAllBackups()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }

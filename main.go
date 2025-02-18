@@ -2,8 +2,9 @@ package main
 
 import (
 	"fmt"
-	"gopgdump/internal/remote"
 	"log/slog"
+
+	"gopgdump/internal/remote"
 
 	"gopgdump/internal/cleaner"
 
