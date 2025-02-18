@@ -38,6 +38,7 @@ func uploadSftp() error {
 	if err != nil {
 		return err
 	}
+	// TODO: here should be ONLY files from *.dmp dirs, NOT *.dirty ones
 	localFiles, err := fio.GetAllFilesInDir(cfg.Dest)
 	if err != nil {
 		return err
