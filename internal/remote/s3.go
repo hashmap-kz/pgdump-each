@@ -170,7 +170,23 @@ func (s *S3Storage) ListObjects(prefix string) ([]string, error) {
 }
 
 func (s *S3Storage) ListTopLevelDirs(path string, reg *regexp.Regexp) ([]string, error) {
-	return nil, nil
+	input := &s3.ListObjectsV2Input{
+		Bucket:    aws.String(path), // TODO: prefix
+		Delimiter: aws.String("/"),  // Groups results by prefix (like top-level directories)
+	}
+
+	output, err := s.client.ListObjectsV2(context.TODO(), input)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list objects in bucket: %w", err)
+	}
+
+	// Extract top-level prefixes (directories)
+	var prefixes []string
+	for _, prefix := range output.CommonPrefixes {
+		prefixes = append(prefixes, *prefix.Prefix) // Extract the directory name
+	}
+
+	return prefixes, nil
 }
 
 func (s *S3Storage) Close() error {

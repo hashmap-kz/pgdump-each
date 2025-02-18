@@ -73,9 +73,6 @@ upload:
     pkeyPath: "${SSH_PKEY}"
     passphrase: ""
     dest: "/home/ansible/backups"
-    # if set, all local rules will also be applied to remote storage
-    # it means, that remote will be synced with local
-    keepSyncedWithLocalRetention: true
   s3:
     enable: true
     endpointUrl: "${AWS_ENDPOINT_URL}"
@@ -86,6 +83,3 @@ upload:
     usePathStyle: true
     disableSSL: true
     prefix: ""
-    # if set, all local rules will also be applied to remote storage
-    # it means, that remote will be synced with local
-    keepSyncedWithLocalRetention: true

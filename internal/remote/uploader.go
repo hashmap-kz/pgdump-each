@@ -30,11 +30,11 @@ func NewUploader(kind UploaderType, config config.UploadConfig) (Uploader, error
 	var err error
 
 	switch kind {
-	// case S3UploaderType:
-	//	uploader, err = NewS3Storage(config)
-	//	if err != nil {
-	//		return nil, fmt.Errorf("failed to init s3 storage: %w", err)
-	//	}
+	case S3UploaderType:
+		uploader, err = NewS3Storage(config)
+		if err != nil {
+			return nil, fmt.Errorf("failed to init s3 storage: %w", err)
+		}
 	case SftpUploaderType:
 		uploader, err = NewSFTPStorage(config)
 		if err != nil {
