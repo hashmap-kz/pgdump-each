@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"time"
 
 	"gopgdump/config"
@@ -150,6 +151,25 @@ func (s *SFTPStorage) ListObjects(path string) ([]string, error) {
 	}
 
 	return objects, nil
+}
+
+func (s *SFTPStorage) ListTopLevelDirs(path string, reg *regexp.Regexp) ([]string, error) {
+	var dirs []string
+
+	// Read the directory contents
+	entries, err := s.sftpClient.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter and collect only directories
+	for _, entry := range entries {
+		if entry.IsDir() && reg.MatchString(entry.Name()) {
+			dirs = append(dirs, entry.Name())
+		}
+	}
+
+	return dirs, nil
 }
 
 func (s *SFTPStorage) Delete(path string) error {

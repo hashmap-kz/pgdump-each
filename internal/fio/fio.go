@@ -3,6 +3,7 @@ package fio
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 )
 
@@ -26,4 +27,23 @@ func GetAllFilesInDir(localDir string) ([]string, error) {
 
 	sort.Strings(result)
 	return result, nil
+}
+
+func ListTopLevelDirs(path string, reg *regexp.Regexp) ([]string, error) {
+	var dirs []string
+
+	// Read the directory contents
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter and collect only directories
+	for _, entry := range entries {
+		if entry.IsDir() && reg.MatchString(entry.Name()) {
+			dirs = append(dirs, entry.Name())
+		}
+	}
+
+	return dirs, nil
 }

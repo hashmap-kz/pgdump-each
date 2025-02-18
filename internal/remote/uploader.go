@@ -2,6 +2,7 @@ package remote
 
 import (
 	"fmt"
+	"regexp"
 
 	"gopgdump/config"
 )
@@ -16,6 +17,7 @@ var (
 type Uploader interface {
 	Upload(localFilePath, remoteFilePath string) error
 	ListObjects(path string) ([]string, error)
+	ListTopLevelDirs(path string, reg *regexp.Regexp) ([]string, error)
 	Close() error
 	GetType() UploaderType
 	Delete(path string) error

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"gopgdump/internal/naming"
+
 	"gopgdump/internal/fio"
 	"gopgdump/internal/local"
 
@@ -34,6 +36,59 @@ func uploadSftp() error {
 		return err
 	}
 
+	_ = uploadOnRemote(sftpUploader)
+	_ = deleteOnRemote(sftpUploader)
+
+	return nil
+}
+
+func deleteOnRemote(sftpUploader Uploader) error {
+	cfg := config.Cfg()
+	sftpConfig := cfg.Upload.Sftp
+
+	// get remote dirs
+	topLevelRemoteDirs, err := sftpUploader.ListTopLevelDirs(sftpConfig.Dest, naming.BackupDmpRegex)
+	if err != nil {
+		return err
+	}
+
+	// get local dirs
+	topLevelLocalDirs, err := fio.ListTopLevelDirs(cfg.Dest, naming.BackupDmpRegex)
+	if err != nil {
+		return err
+	}
+	localIndex := map[string]bool{}
+	for _, f := range topLevelLocalDirs {
+		localIndex[f] = true
+	}
+
+	// remove dirs on remote, that are not present locally
+	for _, remoteDirName := range topLevelRemoteDirs {
+		if !localIndex[remoteDirName] {
+			err := sftpUploader.DeleteAll(filepath.ToSlash(filepath.Join(sftpConfig.Dest, remoteDirName)))
+			if err != nil {
+				slog.Error("remote",
+					slog.String("action", "rm -rf"),
+					slog.String("remote-path", remoteDirName),
+					slog.String("err", err.Error()),
+				)
+			} else {
+				slog.Debug("remote",
+					slog.String("action", "rm -rf"),
+					slog.String("remote-path", remoteDirName),
+					slog.String("status", "ok"),
+				)
+			}
+		}
+	}
+
+	return nil
+}
+
+func uploadOnRemote(sftpUploader Uploader) error {
+	cfg := config.Cfg()
+	sftpConfig := cfg.Upload.Sftp
+
 	// local and remote backups
 	remoteFiles, err := sftpUploader.ListObjects(sftpConfig.Dest)
 	if err != nil {
@@ -54,76 +109,6 @@ func uploadSftp() error {
 	if err != nil {
 		return err
 	}
-
-	uploadOnRemote(relativeMapLocal, relativeMapRemote, sftpUploader)
-	deleteOnRemote(relativeMapLocal, relativeMapRemote, sftpUploader)
-	return nil
-}
-
-func getLocalFiles() ([]string, error) {
-	backups, err := local.FindAllBackups()
-	if err != nil {
-		return nil, err
-	}
-	localFiles := []string{}
-	for _, v := range backups {
-		for _, b := range v {
-			allFilesInDir, err := fio.GetAllFilesInDir(b.Path)
-			if err != nil {
-				return nil, err
-			}
-			localFiles = append(localFiles, allFilesInDir...)
-		}
-	}
-	return localFiles, nil
-}
-
-func deleteOnRemote(
-	relativeMapLocal map[string]bool,
-	relativeMapRemote map[string]bool,
-	sftpUploader Uploader,
-) {
-	cfg := config.Cfg()
-	sftpConfig := cfg.Upload.Sftp
-
-	dirsToRemoveOnRemote := map[string]bool{}
-	for remoteFile := range relativeMapRemote {
-		if !relativeMapLocal[remoteFile] {
-			remotePathToRm := filepath.ToSlash(fmt.Sprintf("%s/%s", sftpConfig.Dest, remoteFile))
-			remoteDirToRm := filepath.ToSlash(filepath.Dir(remotePathToRm))
-			if remoteDirToRm != "." &&
-				remoteDirToRm != ".." &&
-				remoteDirToRm != filepath.ToSlash(sftpConfig.Dest) {
-				dirsToRemoveOnRemote[remoteDirToRm] = true
-			}
-		}
-	}
-
-	for k := range dirsToRemoveOnRemote {
-		err := sftpUploader.DeleteAll(k)
-		if err != nil {
-			slog.Error("remote",
-				slog.String("action", "rm -rf"),
-				slog.String("remote-path", k),
-				slog.String("err", err.Error()),
-			)
-		} else {
-			slog.Debug("remote",
-				slog.String("action", "rm -rf"),
-				slog.String("remote-path", k),
-				slog.String("status", "ok"),
-			)
-		}
-	}
-}
-
-func uploadOnRemote(
-	relativeMapLocal map[string]bool,
-	relativeMapRemote map[string]bool,
-	sftpUploader Uploader,
-) {
-	cfg := config.Cfg()
-	sftpConfig := cfg.Upload.Sftp
 
 	filesToUploadOnRemote := []uploadTask{}
 	for localFile := range relativeMapLocal {
@@ -152,6 +137,8 @@ func uploadOnRemote(
 	}
 	close(uploadTasksCh)
 	wg.Wait()
+
+	return nil
 }
 
 func uploadWorker(worker int, uploader Uploader, tasks <-chan uploadTask, wg *sync.WaitGroup) {
@@ -191,4 +178,22 @@ func makeRelativeMap(basepath string, input []string) (map[string]bool, error) {
 		result[rel] = true
 	}
 	return result, nil
+}
+
+func getLocalFiles() ([]string, error) {
+	backups, err := local.FindAllBackups()
+	if err != nil {
+		return nil, err
+	}
+	localFiles := []string{}
+	for _, v := range backups {
+		for _, b := range v {
+			allFilesInDir, err := fio.GetAllFilesInDir(b.Path)
+			if err != nil {
+				return nil, err
+			}
+			localFiles = append(localFiles, allFilesInDir...)
+		}
+	}
+	return localFiles, nil
 }
