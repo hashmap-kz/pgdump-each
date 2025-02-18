@@ -3,6 +3,7 @@ printDumpLogs: false
 
 # pg_dump
 dump:
+  enable: true
   jobs: 5
   dumpGlobals: true
   dumpConfigs: true
@@ -40,16 +41,17 @@ dump:
       dbname: vault
 
 # pg_basebackup
-#base:
-#  compress: true
-#  clusters:
-#    - host: localhost
-#      port: 5432
-#      username: postgres
-#      password: postgres
-#      opts:
-#        connect_timeout: "5"
-#        sslmode: "disable"
+base:
+  enable: false
+  compress: true
+  clusters:
+    - host: localhost
+      port: 5432
+      username: postgres
+      password: postgres
+      opts:
+        connect_timeout: "5"
+        sslmode: "disable"
 
 retention:
   enable: true

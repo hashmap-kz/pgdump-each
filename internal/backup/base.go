@@ -18,6 +18,10 @@ import (
 
 func RunPgBasebackups() {
 	cfg := config.Cfg()
+	if !cfg.Base.Enable {
+		return
+	}
+
 	clusters := cfg.Base.Clusters
 
 	// Number of concurrent workers

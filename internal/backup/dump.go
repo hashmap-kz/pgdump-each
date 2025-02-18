@@ -19,6 +19,10 @@ import (
 
 func RunPgDumps() {
 	cfg := config.Cfg()
+	if !cfg.Dump.Enable {
+		return
+	}
+
 	databases := cfg.Dump.DBS
 
 	// Number of concurrent workers

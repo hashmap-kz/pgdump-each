@@ -28,6 +28,7 @@ type Config struct {
 }
 
 type PgDumpsConfig struct {
+	Enable      bool
 	Jobs        int
 	DumpGlobals bool
 	DumpConfigs bool
@@ -36,6 +37,7 @@ type PgDumpsConfig struct {
 }
 
 type PgBaseBackupsConfig struct {
+	Enable   bool
 	Compress bool
 	Clusters []PgBaseBackupCluster
 }
