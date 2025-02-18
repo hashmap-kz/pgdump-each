@@ -155,19 +155,33 @@ func LoadConfig(content []byte) *Config {
 func checkConfigHard() {
 	checkNoDuplicateAmongHosts()
 	checkSftpConfig()
+	checkS3Config()
 }
 
 func checkSftpConfig() {
-	if !config.Upload.Sftp.Enable {
+	s := config.Upload.Sftp
+	if !s.Enable {
 		return
 	}
-	s := config.Upload.Sftp
 	if s.Dest == "" ||
 		s.Host == "" ||
 		s.Port == "" ||
 		s.User == "" ||
 		s.PkeyPath == "" {
 		log.Fatalf("sftp-config not fully set-up, check all required values are set")
+	}
+}
+
+func checkS3Config() {
+	s := config.Upload.S3
+	if !s.Enable {
+		return
+	}
+	if s.EndpointUrl == "" ||
+		s.AccessKeyId == "" ||
+		s.SecretAccessKey == "" ||
+		s.Bucket == "" {
+		log.Fatalf("s3-config not fully set-up, check all required values are set")
 	}
 }
 
