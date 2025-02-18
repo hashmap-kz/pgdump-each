@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"gopgdump/internal/fio"
+	"gopgdump/internal/local"
 
 	"gopgdump/config"
 )
@@ -38,8 +39,8 @@ func uploadSftp() error {
 	if err != nil {
 		return err
 	}
-	// TODO: here should be ONLY files from *.dmp dirs, NOT *.dirty ones
-	localFiles, err := fio.GetAllFilesInDir(cfg.Dest)
+	// here should be ONLY files from *.dmp dirs, NOT *.dirty ones
+	localFiles, err := getLocalFiles()
 	if err != nil {
 		return err
 	}
@@ -57,6 +58,24 @@ func uploadSftp() error {
 	uploadOnRemote(relativeMapLocal, relativeMapRemote, sftpUploader)
 	deleteOnRemote(relativeMapLocal, relativeMapRemote, sftpUploader)
 	return nil
+}
+
+func getLocalFiles() ([]string, error) {
+	backups, err := local.FindAllBackups()
+	if err != nil {
+		return nil, err
+	}
+	localFiles := []string{}
+	for _, v := range backups {
+		for _, b := range v {
+			allFilesInDir, err := fio.GetAllFilesInDir(b.Path)
+			if err != nil {
+				return nil, err
+			}
+			localFiles = append(localFiles, allFilesInDir...)
+		}
+	}
+	return localFiles, nil
 }
 
 func deleteOnRemote(
