@@ -140,8 +140,13 @@ func (s *SFTPStorage) ListObjects(path string) ([]string, error) {
 		if err := walker.Err(); err != nil {
 			return nil, fmt.Errorf("error walking directory: %w", err)
 		}
+		if walker.Stat().IsDir() {
+			continue
+		}
 		// Collect the full path of the current file/directory
-		objects = append(objects, walker.Path())
+		if walker.Path() != path {
+			objects = append(objects, walker.Path())
+		}
 	}
 
 	return objects, nil
