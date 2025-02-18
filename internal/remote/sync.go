@@ -69,23 +69,33 @@ func uploadSftp() error {
 		}
 	}
 	// remove on remote
+	dirsToRemoveOnRemote := map[string]bool{}
 	for remoteFile := range relativeMapRemote {
 		if !relativeMapLocal[remoteFile] {
 			remotePathToRm := filepath.ToSlash(fmt.Sprintf("%s/%s", cfg.Upload.Sftp.Dest, remoteFile))
-			err := sftpUploader.Delete(remotePathToRm)
-			if err != nil {
-				slog.Error("remote",
-					slog.String("action", "rm"),
-					slog.String("status", "err"),
-					slog.String("err", err.Error()),
-				)
-			} else {
-				slog.Debug("remote",
-					slog.String("action", "rm"),
-					slog.String("status", "ok"),
-					slog.String("path", remotePathToRm),
-				)
+			remoteDirToRm := filepath.ToSlash(filepath.Dir(remotePathToRm))
+			if remoteDirToRm != "." &&
+				remoteDirToRm != ".." &&
+				remoteDirToRm != filepath.ToSlash(cfg.Upload.Sftp.Dest) {
+				dirsToRemoveOnRemote[remoteDirToRm] = true
 			}
+		}
+	}
+	for k := range dirsToRemoveOnRemote {
+		err := sftpUploader.DeleteAll(k)
+		if err != nil {
+			slog.Error("remote",
+				slog.String("action", "rm -rf"),
+				slog.String("remote-path", k),
+				slog.String("status", "err"),
+				slog.String("err", err.Error()),
+			)
+		} else {
+			slog.Debug("remote",
+				slog.String("action", "rm -rf"),
+				slog.String("remote-path", k),
+				slog.String("status", "ok"),
+			)
 		}
 	}
 
