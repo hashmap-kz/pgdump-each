@@ -85,29 +85,29 @@ func deleteOnRemote(sftpUploader Uploader) error {
 	return nil
 }
 
-func uploadOnRemote(sftpUploader Uploader) error {
+func getFilesToUpload(uploader Uploader) ([]uploadTask, error) {
 	cfg := config.Cfg()
 	sftpConfig := cfg.Upload.Sftp
 
 	// local and remote backups
-	remoteFiles, err := sftpUploader.ListObjects(sftpConfig.Dest)
+	remoteFiles, err := uploader.ListObjects(sftpConfig.Dest)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// here should be ONLY files from *.dmp dirs, NOT *.dirty ones
 	localFiles, err := getLocalFiles()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// search index
 	relativeMapLocal, err := makeRelativeMap(cfg.Dest, localFiles)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	relativeMapRemote, err := makeRelativeMap(sftpConfig.Dest, remoteFiles)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	filesToUploadOnRemote := []uploadTask{}
@@ -122,6 +122,16 @@ func uploadOnRemote(sftpUploader Uploader) error {
 				remotePath: remoteFilePath,
 			})
 		}
+	}
+
+	return filesToUploadOnRemote, nil
+}
+
+func uploadOnRemote(sftpUploader Uploader) error {
+	// prepare tasks
+	filesToUploadOnRemote, err := getFilesToUpload(sftpUploader)
+	if err != nil {
+		return err
 	}
 
 	// upload concurrently
