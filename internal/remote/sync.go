@@ -3,10 +3,10 @@ package remote
 import (
 	"fmt"
 	"log/slog"
-	"os"
 	"path/filepath"
-	"sort"
 	"sync"
+
+	"gopgdump/internal/util"
 
 	"gopgdump/config"
 )
@@ -38,7 +38,7 @@ func uploadSftp() error {
 	if err != nil {
 		return err
 	}
-	localFiles, err := getAllFilesInDir(cfg.Dest)
+	localFiles, err := util.GetAllFilesInDir(cfg.Dest)
 	if err != nil {
 		return err
 	}
@@ -168,27 +168,5 @@ func makeRelativeMap(basepath string, input []string) (map[string]bool, error) {
 		}
 		result[rel] = true
 	}
-	return result, nil
-}
-
-func getAllFilesInDir(localDir string) ([]string, error) {
-	var err error
-	result := []string{}
-
-	err = filepath.Walk(localDir, func(localPath string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-		if info.IsDir() {
-			return nil
-		}
-		result = append(result, filepath.ToSlash(localPath))
-		return nil
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Strings(result)
 	return result, nil
 }
