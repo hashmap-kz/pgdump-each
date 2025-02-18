@@ -79,6 +79,7 @@ type UploadConfig struct {
 	RetryAttempts  int
 	MaxConcurrency int
 	Sftp           UploadSftpConfig
+	S3             UploadS3Config
 }
 
 type UploadSftpConfig struct {
@@ -93,6 +94,22 @@ type UploadSftpConfig struct {
 
 	// Optional, it private key is created with a passphrase
 	Passphrase string
+}
+
+type UploadS3Config struct {
+	Enable bool
+
+	EndpointUrl     string
+	AccessKeyId     string
+	SecretAccessKey string
+	Bucket          string
+	Region          string
+	UsePathStyle    bool
+	DisableSSL      bool
+
+	// Optional, additional prefix to where the store backups inside bucket
+	// Recommended, if your bucket is used not only for backups
+	Prefix string
 }
 
 // LoadConfigFromFile unmarshal file into config struct
