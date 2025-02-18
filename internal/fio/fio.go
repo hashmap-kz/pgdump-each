@@ -1,4 +1,4 @@
-package util
+package fio
 
 import (
 	"os"

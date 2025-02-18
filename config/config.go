@@ -28,8 +28,11 @@ type Config struct {
 }
 
 type PgDumpsConfig struct {
-	Jobs int
-	DBS  []PgDumpDatabase
+	Jobs        int
+	DumpGlobals bool
+	DumpConfigs bool
+	SaveDumpLog bool
+	DBS         []PgDumpDatabase
 }
 
 type PgBaseBackupsConfig struct {

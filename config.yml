@@ -4,6 +4,9 @@ printDumpLogs: false
 # pg_dump
 dump:
   jobs: 5
+  dumpGlobals: true
+  dumpConfigs: true
+  saveDumpLog: true
   dbs:
     - host: localhost
       port: 5432

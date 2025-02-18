@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gopgdump/internal/util"
+	"gopgdump/internal/fio"
 
 	"gopgdump/config"
 )
@@ -38,7 +38,7 @@ func uploadSftp() error {
 	if err != nil {
 		return err
 	}
-	localFiles, err := util.GetAllFilesInDir(cfg.Dest)
+	localFiles, err := fio.GetAllFilesInDir(cfg.Dest)
 	if err != nil {
 		return err
 	}

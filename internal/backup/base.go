@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"gopgdump/internal/util"
+	"gopgdump/internal/connstr"
 
 	"gopgdump/config"
 	"gopgdump/internal/ts"
@@ -74,7 +74,13 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 		slog.String("cluster", fmt.Sprintf("%s:%d", cluster.Host, cluster.Port)),
 	)
 
-	connStrBasebackup, err := util.CreateConnStrBasebackup(cluster)
+	connStrBasebackup, err := connstr.CreateConnStr(connstr.ConnStr{
+		Host:     cluster.Host,
+		Port:     cluster.Port,
+		Username: cluster.Username,
+		Password: cluster.Password,
+		Opts:     cluster.Opts,
+	})
 	if err != nil {
 		return err
 	}

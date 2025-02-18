@@ -10,10 +10,11 @@ import (
 	"path/filepath"
 	"sync"
 
+	"gopgdump/internal/connstr"
+
 	"gopgdump/internal/ts"
 
 	"gopgdump/config"
-	"gopgdump/internal/util"
 )
 
 func RunPgDumps() {
@@ -83,7 +84,14 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 		slog.Int("jobs", jobs),
 	)
 
-	connStr, err := util.CreateConnStr(db)
+	connStr, err := connstr.CreateConnStr(connstr.ConnStr{
+		Host:     db.Host,
+		Port:     db.Port,
+		Username: db.Username,
+		Password: db.Password,
+		Dbname:   db.Dbname,
+		Opts:     db.Opts,
+	})
 	if err != nil {
 		return err
 	}
