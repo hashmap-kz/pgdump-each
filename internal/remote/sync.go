@@ -208,7 +208,7 @@ func makeRelativeMap(basepath string, input []string) (map[string]bool, error) {
 		if err != nil {
 			return nil, err
 		}
-		result[rel] = true
+		result[filepath.ToSlash(rel)] = true
 	}
 	return result, nil
 }
