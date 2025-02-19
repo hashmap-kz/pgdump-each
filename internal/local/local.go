@@ -2,10 +2,11 @@ package local
 
 import (
 	"fmt"
-	"gopgdump/internal/fio"
 	"os"
 	"path/filepath"
 	"regexp"
+
+	"gopgdump/internal/fio"
 
 	"gopgdump/config"
 	"gopgdump/internal/naming"
@@ -42,6 +43,22 @@ func FindAllBackups() (BackupIndex, error) {
 	}
 
 	return result, nil
+}
+
+func ListObjects() ([]string, error) {
+	index, err := FindAllBackups()
+	if err != nil {
+		return nil, err
+	}
+	paths := []string{}
+	for _, v := range index {
+		for _, be := range v {
+			for _, fe := range be.Files {
+				paths = append(paths, fe.Path)
+			}
+		}
+	}
+	return paths, nil
 }
 
 func ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
@@ -130,7 +147,6 @@ func getFilesForBackup(path string) ([]BackupFileEntry, error) {
 		if err != nil {
 			return nil, err
 		}
-
 		relPathFile, err := filepath.Rel(cfg.Dest, f)
 		if err != nil {
 			return nil, err

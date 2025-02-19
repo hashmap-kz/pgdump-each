@@ -7,7 +7,6 @@ import (
 	"sync"
 
 	"gopgdump/config"
-	"gopgdump/internal/fio"
 	"gopgdump/internal/local"
 	"gopgdump/internal/naming"
 	"gopgdump/internal/remote/uploader"
@@ -108,7 +107,7 @@ func getFilesToUpload(u uploader.Uploader) ([]uploadTask, error) {
 		return nil, err
 	}
 	// here should be ONLY files from *.dmp dirs, NOT *.dirty ones
-	localFiles, err := getLocalFiles()
+	localFiles, err := local.ListObjects()
 	if err != nil {
 		return nil, err
 	}
@@ -208,22 +207,4 @@ func makeRelativeMap(basepath string, input []string) (map[string]bool, error) {
 		result[filepath.ToSlash(rel)] = true
 	}
 	return result, nil
-}
-
-func getLocalFiles() ([]string, error) {
-	backups, err := local.FindAllBackups()
-	if err != nil {
-		return nil, err
-	}
-	localFiles := []string{}
-	for _, v := range backups {
-		for _, b := range v {
-			allFilesInDir, err := fio.GetAllFilesInDir(b.Path)
-			if err != nil {
-				return nil, err
-			}
-			localFiles = append(localFiles, allFilesInDir...)
-		}
-	}
-	return localFiles, nil
 }
