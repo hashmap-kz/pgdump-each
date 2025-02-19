@@ -38,6 +38,8 @@ func FindAllBackups() (BackupIndex, error) {
 		return nil, err
 	}
 	for _, b := range backups {
+		// NOTE: key matters in exactly that form
+		// by that key retention is performed
 		key := fmt.Sprintf("%s-%s-%s", b.BackupInfo.Host, b.BackupInfo.Port, b.BackupInfo.Dbname)
 		result[key] = append(result[key], b)
 	}
