@@ -52,14 +52,10 @@ func deleteOnRemote(u uploader.Uploader) error {
 	if err != nil {
 		return err
 	}
-	localIndex := map[string]bool{}
-	for _, f := range topLevelLocalDirs {
-		localIndex[f] = true
-	}
 
 	// remove dirs on remote, that are not present locally
-	for _, remoteDirName := range topLevelRemoteDirs {
-		if !localIndex[remoteDirName] {
+	for remoteDirName := range topLevelRemoteDirs {
+		if !topLevelLocalDirs[remoteDirName] {
 			err := u.DeleteAll(filepath.ToSlash(remoteDirName))
 			if err != nil {
 				slog.Error("remote",

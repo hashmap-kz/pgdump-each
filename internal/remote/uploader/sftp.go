@@ -152,8 +152,8 @@ func (s *SFTPStorage) ListObjects() ([]string, error) {
 	return objects, nil
 }
 
-func (s *SFTPStorage) ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
-	var dirs []string
+func (s *SFTPStorage) ListTopLevelDirs(reg *regexp.Regexp) (map[string]bool, error) {
+	dirs := make(map[string]bool)
 
 	// Read the directory contents
 	entries, err := s.sftpClient.ReadDir(s.config.Dest)
@@ -164,7 +164,7 @@ func (s *SFTPStorage) ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
 	// Filter and collect only directories
 	for _, entry := range entries {
 		if entry.IsDir() && reg.MatchString(entry.Name()) {
-			dirs = append(dirs, entry.Name())
+			dirs[filepath.ToSlash(entry.Name())] = true
 		}
 	}
 

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -160,7 +161,7 @@ func (s *S3Storage) ListObjects() ([]string, error) {
 	return objects, nil
 }
 
-func (s *S3Storage) ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
+func (s *S3Storage) ListTopLevelDirs(reg *regexp.Regexp) (map[string]bool, error) {
 	input := &s3.ListObjectsV2Input{
 		Bucket:    aws.String(s.bucketName),
 		Delimiter: aws.String("/"), // Groups results by prefix (like top-level directories)
@@ -172,7 +173,7 @@ func (s *S3Storage) ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
 	}
 
 	// Extract top-level prefixes (directories)
-	var prefixes []string
+	prefixes := make(map[string]bool)
 	for _, prefix := range output.CommonPrefixes {
 		if prefix.Prefix == nil {
 			continue
@@ -181,7 +182,7 @@ func (s *S3Storage) ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
 		if !reg.MatchString(prefixClean) {
 			continue
 		}
-		prefixes = append(prefixes, prefixClean)
+		prefixes[filepath.ToSlash(prefixClean)] = true
 	}
 
 	return prefixes, nil

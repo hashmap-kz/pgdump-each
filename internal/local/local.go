@@ -63,8 +63,8 @@ func ListObjects() ([]string, error) {
 	return paths, nil
 }
 
-func ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
-	var dirs []string
+func ListTopLevelDirs(reg *regexp.Regexp) (map[string]bool, error) {
+	dirs := make(map[string]bool)
 	cfg := config.Cfg()
 
 	entries, err := os.ReadDir(cfg.Dest)
@@ -73,7 +73,7 @@ func ListTopLevelDirs(reg *regexp.Regexp) ([]string, error) {
 	}
 	for _, entry := range entries {
 		if entry.IsDir() && reg.MatchString(entry.Name()) {
-			dirs = append(dirs, entry.Name())
+			dirs[filepath.ToSlash(entry.Name())] = true
 		}
 	}
 	return dirs, nil

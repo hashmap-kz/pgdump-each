@@ -17,7 +17,7 @@ var (
 type Uploader interface {
 	Upload(localFilePath, remotePath string) error
 	ListObjects() ([]string, error)
-	ListTopLevelDirs(reg *regexp.Regexp) ([]string, error)
+	ListTopLevelDirs(reg *regexp.Regexp) (map[string]bool, error)
 	Close() error
 	GetType() UploaderType
 	DeleteAll(prefix string) error
