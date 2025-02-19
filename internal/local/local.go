@@ -12,6 +12,7 @@ import (
 
 type BackupEntry struct {
 	Path       string
+	RelPath    string
 	AbsPath    string
 	BackupInfo naming.BackupInfo
 }
@@ -75,7 +76,14 @@ func findDumpsDirs(reg *regexp.Regexp) ([]BackupEntry, error) {
 func parseBackupInfo(path string) (BackupEntry, error) {
 	// 20250217135009--localhost-5432--demo.dmp
 
+	cfg := config.Cfg()
+
 	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return BackupEntry{}, err
+	}
+
+	relPath, err := filepath.Rel(cfg.Dest, path)
 	if err != nil {
 		return BackupEntry{}, err
 	}
@@ -86,8 +94,9 @@ func parseBackupInfo(path string) (BackupEntry, error) {
 	}
 
 	return BackupEntry{
-		Path:       path,
-		AbsPath:    absPath,
+		Path:       filepath.ToSlash(path),
+		AbsPath:    filepath.ToSlash(absPath),
+		RelPath:    filepath.ToSlash(relPath),
 		BackupInfo: backupInfo,
 	}, nil
 }
