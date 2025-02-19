@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"fmt"
 	"log/slog"
 	"path/filepath"
 	"sync"
@@ -102,13 +101,12 @@ func getFilesToUpload(u uploader.Uploader) ([]uploadTask, error) {
 	if err != nil {
 		return nil, err
 	}
-	// here should be ONLY files from *.dmp dirs, NOT *.dirty ones
 	localFiles, err := local.ListObjects()
 	if err != nil {
 		return nil, err
 	}
 
-	// search index
+	// relative search index
 	relativeMapLocal, err := makeRelativeMap(cfg.Dest, localFiles)
 	if err != nil {
 		return nil, err
@@ -122,17 +120,9 @@ func getFilesToUpload(u uploader.Uploader) ([]uploadTask, error) {
 	for localFile := range relativeMapLocal {
 		if !relativeMapRemote[localFile] {
 			// make actual paths from relatives (we compare relatives, but working with actual)
-			localFilePath := filepath.Join(cfg.Dest, localFile)
-
-			// dest may be empty for s3, when the prefix is not set, and all objects are stored at the bucket level
-			remoteFilePath := filepath.ToSlash(fmt.Sprintf("%s/%s", dest, localFile))
-			if dest == "" {
-				remoteFilePath = filepath.ToSlash(localFile)
-			}
-
 			filesToUploadOnRemote = append(filesToUploadOnRemote, uploadTask{
-				localPath:  localFilePath,
-				remotePath: remoteFilePath,
+				localPath:  filepath.Join(cfg.Dest, localFile),
+				remotePath: filepath.ToSlash(filepath.Join(dest, localFile)),
 			})
 		}
 	}
