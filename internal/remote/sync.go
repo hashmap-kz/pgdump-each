@@ -17,31 +17,32 @@ type uploadTask struct {
 }
 
 func SyncLocalWithRemote() error {
-	var err error
-
 	cfg := config.Cfg()
 	if !cfg.Upload.Enable {
 		return nil
 	}
 
 	// NOTE: !!! adding new remote-storage increase wg cnt !!!
+	const numRemotes = 2
 	var wg sync.WaitGroup
-	wg.Add(2)
-	go func() {
-		defer wg.Done()
-		if err := uploadSftp(); err != nil {
-			slog.Error("remote", slog.String("sync-error", err.Error()))
-		}
-	}()
-	go func() {
-		defer wg.Done()
-		if err := uploadS3(); err != nil {
-			slog.Error("remote", slog.String("sync-error", err.Error()))
-		}
-	}()
+	errCh := make(chan error, numRemotes) // Buffered channel to avoid blocking
+	wg.Add(numRemotes)
+	go uploadRoutine(&wg, errCh, uploadSftp)
+	go uploadRoutine(&wg, errCh, uploadS3)
 	wg.Wait()
+	close(errCh)
 
-	return err
+	for err := range errCh {
+		slog.Error("remote", slog.String("sync-error", err.Error()))
+	}
+	return nil
+}
+
+func uploadRoutine(wg *sync.WaitGroup, errCh chan<- error, uploadFunc func() error) {
+	defer wg.Done()
+	if err := uploadFunc(); err != nil {
+		errCh <- err
+	}
 }
 
 // remotes
