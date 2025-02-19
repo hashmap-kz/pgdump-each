@@ -2,6 +2,7 @@ package local
 
 import (
 	"fmt"
+	"gopgdump/internal/fio"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -15,6 +16,14 @@ type BackupEntry struct {
 	RelPath    string
 	AbsPath    string
 	BackupInfo naming.BackupInfo
+	Files      []BackupFileEntry
+}
+
+type BackupFileEntry struct {
+	Path     string
+	RelPath  string
+	AbsPath  string
+	Basename string
 }
 
 // BackupIndex host+port+dbname=[]backups
@@ -93,10 +102,45 @@ func parseBackupInfo(path string) (BackupEntry, error) {
 		return BackupEntry{}, err
 	}
 
+	filesForBackup, err := getFilesForBackup(path)
+	if err != nil {
+		return BackupEntry{}, err
+	}
+
 	return BackupEntry{
 		Path:       filepath.ToSlash(path),
 		AbsPath:    filepath.ToSlash(absPath),
 		RelPath:    filepath.ToSlash(relPath),
 		BackupInfo: backupInfo,
+		Files:      filesForBackup,
 	}, nil
+}
+
+func getFilesForBackup(path string) ([]BackupFileEntry, error) {
+	cfg := config.Cfg()
+
+	filesInDir, err := fio.GetAllFilesInDir(path)
+	if err != nil {
+		return nil, err
+	}
+
+	files := []BackupFileEntry{}
+	for _, f := range filesInDir {
+		absPathFile, err := filepath.Abs(f)
+		if err != nil {
+			return nil, err
+		}
+
+		relPathFile, err := filepath.Rel(cfg.Dest, f)
+		if err != nil {
+			return nil, err
+		}
+		files = append(files, BackupFileEntry{
+			Path:     filepath.ToSlash(f),
+			RelPath:  filepath.ToSlash(relPathFile),
+			AbsPath:  filepath.ToSlash(absPathFile),
+			Basename: filepath.Base(f),
+		})
+	}
+	return files, nil
 }
