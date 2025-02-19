@@ -24,15 +24,64 @@ func SyncLocalWithRemote() error {
 		return nil
 	}
 
-	err = uploadSftp()
-	if err != nil {
-		slog.Error("remote", slog.String("sync-error", err.Error()))
+	// NOTE: !!! adding new remote-storage increase wg cnt !!!
+	var wg sync.WaitGroup
+	wg.Add(2)
+	go func() {
+		defer wg.Done()
+		if err := uploadSftp(); err != nil {
+			slog.Error("remote", slog.String("sync-error", err.Error()))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		if err := uploadS3(); err != nil {
+			slog.Error("remote", slog.String("sync-error", err.Error()))
+		}
+	}()
+	wg.Wait()
+
+	return err
+}
+
+// remotes
+
+func uploadSftp() error {
+	var err error
+
+	cfg := config.Cfg()
+	sftpConfig := cfg.Upload.Sftp
+	if !sftpConfig.Enable {
+		return nil
 	}
 
-	err = uploadS3()
+	u, err := uploader.NewUploader(uploader.SftpUploaderType, cfg.Upload)
 	if err != nil {
-		slog.Error("remote", slog.String("sync-error", err.Error()))
+		return err
 	}
+
+	err = uploadOnRemote(u)
+	err = deleteOnRemote(u)
+
+	return err
+}
+
+func uploadS3() error {
+	var err error
+
+	cfg := config.Cfg()
+	s3Config := cfg.Upload.S3
+	if !s3Config.Enable {
+		return nil
+	}
+
+	u, err := uploader.NewUploader(uploader.S3UploaderType, cfg.Upload)
+	if err != nil {
+		return nil
+	}
+
+	err = uploadOnRemote(u)
+	err = deleteOnRemote(u)
 
 	return err
 }
