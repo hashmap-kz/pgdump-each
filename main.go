@@ -2,10 +2,7 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"log/slog"
-
-	"gopgdump/internal/local"
 
 	"gopgdump/internal/remote"
 
@@ -24,12 +21,6 @@ import (
 func main() {
 	cfg := config.LoadConfigFromFile("config.yml")
 	slog.SetDefault(logger.InitLogger(cfg.Logger.Format, cfg.Logger.Level))
-
-	// TODO:
-	_, err2 := local.FindAllBackupsV2()
-	if err2 != nil {
-		log.Fatal(err2)
-	}
 
 	// Before concurrent tasks are run
 	// 1) remove all '*.dirty' dirs, if any
