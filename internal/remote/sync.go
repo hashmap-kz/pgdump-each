@@ -34,20 +34,16 @@ func SyncLocalWithRemote() error {
 
 	// concurrently run tasks for all remotes at once
 
-	filterFn := func(stubNoResults struct{}) bool {
-		return true
+	uploaderFn := func(_ context.Context, r remoteStorageTask) error {
+		return r.fn()
 	}
-	uploaderFn := func(_ context.Context, r remoteStorageTask) (stubNoResults struct{}, err error) {
-		return struct{}{}, r.fn()
-	}
-	_, errors := concur.ProcessConcurrentlyWithResult(
+	errors := concur.ProcessConcurrently(
 		context.Background(),
 		[]remoteStorageTask{
 			{fn: uploadS3},
 			{fn: uploadSftp},
 		},
 		uploaderFn,
-		filterFn,
 	)
 	if len(errors) != 0 {
 		return fmt.Errorf("%s", errors[0].Error())

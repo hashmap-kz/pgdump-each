@@ -40,8 +40,8 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/google/go-cmp v0.5.9 h1:O2Tfq5qg4qc4AmwVlvv0oLiVAGB7enBSJ2x2DqQFi38=
 github.com/google/go-cmp v0.5.9/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
-github.com/hashmap-kz/workerfn v0.0.0-20250220093043-f934836a4f80 h1:gsEnSw8Gix6fY00pdtfFoBRlXLSxQBh0FUvlaVZGTbQ=
-github.com/hashmap-kz/workerfn v0.0.0-20250220093043-f934836a4f80/go.mod h1:GeSubuEvGlLGgdvvA2RS5kRuM6GWYvU4apWdgDc7Ev8=
+github.com/hashmap-kz/workerfn v1.0.1 h1:IBjBPmEsumjLLt4jyRkNY9g9ExFyF1JU9Lx9sLyRBH0=
+github.com/hashmap-kz/workerfn v1.0.1/go.mod h1:GeSubuEvGlLGgdvvA2RS5kRuM6GWYvU4apWdgDc7Ev8=
 github.com/jackc/pgpassfile v1.0.0 h1:/6Hmqy13Ss2zCq62VdNG8tM1wchn8zjSGOBJ6icpsIM=
 github.com/jackc/pgpassfile v1.0.0/go.mod h1:CEx0iS5ambNFdcRtxPj5JhEz+xB6uRky5eyVu/W2HEg=
 github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 h1:iCEnooe7UlwOQYpKFhBabPMi4aNAfoODPEFNiAnClxo=
