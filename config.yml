@@ -67,7 +67,7 @@ logger:
 upload:
   enable: true
   retryAttempts: 2
-  maxConcurrency: 8
+  maxConcurrency: 16
   checkTotalCntAndSizeAfterUpload: true
   sftp:
     enable: true

@@ -196,12 +196,9 @@ func uploadOnRemote(u uploader.Uploader) error {
 		return result != ""
 	}
 
-	// TODO: maxConcurrency config
-	const workerLimit = 8
-
 	_, errors := concur.ProcessConcurrentlyWithResultAndLimit(
 		context.Background(),
-		workerLimit,
+		getUploadMaxConcurrency(),
 		filesToUploadOnRemote,
 		uploadWorker,
 		filterFn)
@@ -277,4 +274,13 @@ func calcTotals(u uploader.Uploader) error {
 	}
 
 	return nil
+}
+
+func getUploadMaxConcurrency() int {
+	cfg := config.Cfg()
+	maxConcurrency := cfg.Upload.MaxConcurrency
+	if maxConcurrency <= 0 || maxConcurrency >= 128 {
+		return 8
+	}
+	return maxConcurrency
 }
