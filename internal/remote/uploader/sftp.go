@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"time"
 
+	"gopgdump/internal/fio"
+
 	"gopgdump/config"
 
 	"github.com/pkg/sftp"
@@ -125,8 +127,8 @@ func sftpDirExists(client *sftp.Client, path string) (bool, error) {
 }
 
 // ListObjects recursively lists all files and directories under the specified remote directory
-func (s *SFTPStorage) ListObjects() ([]string, error) {
-	objects := []string{}
+func (s *SFTPStorage) ListObjects() ([]fio.FileRepr, error) {
+	objects := []fio.FileRepr{}
 
 	exists, err := sftpDirExists(s.sftpClient, s.config.Dest)
 	if err != nil {
@@ -141,11 +143,18 @@ func (s *SFTPStorage) ListObjects() ([]string, error) {
 		if err := walker.Err(); err != nil {
 			return nil, fmt.Errorf("error walking directory: %w", err)
 		}
-		if walker.Stat().IsDir() {
+		stat := walker.Stat()
+		if stat == nil {
+			continue
+		}
+		if stat.IsDir() {
 			continue
 		}
 		if walker.Path() != s.config.Dest {
-			objects = append(objects, walker.Path())
+			objects = append(objects, fio.FileRepr{
+				Path: walker.Path(),
+				Size: stat.Size(),
+			})
 		}
 	}
 

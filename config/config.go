@@ -78,11 +78,12 @@ type LoggerConfig struct {
 }
 
 type UploadConfig struct {
-	Enable         bool
-	RetryAttempts  int
-	MaxConcurrency int
-	Sftp           UploadSftpConfig
-	S3             UploadS3Config
+	Enable                          bool
+	RetryAttempts                   int
+	MaxConcurrency                  int
+	CheckTotalCntAndSizeAfterUpload bool
+	Sftp                            UploadSftpConfig
+	S3                              UploadS3Config
 }
 
 type UploadSftpConfig struct {

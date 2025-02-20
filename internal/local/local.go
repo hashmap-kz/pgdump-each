@@ -25,6 +25,7 @@ type BackupFileEntry struct {
 	RelPath  string
 	AbsPath  string
 	Basename string
+	Size     int64
 }
 
 // BackupIndex host+port+dbname=[]backups
@@ -47,16 +48,19 @@ func FindAllBackups() (BackupIndex, error) {
 	return result, nil
 }
 
-func ListObjects() ([]string, error) {
+func ListObjects() ([]fio.FileRepr, error) {
 	index, err := FindAllBackups()
 	if err != nil {
 		return nil, err
 	}
-	paths := []string{}
+	paths := []fio.FileRepr{}
 	for _, v := range index {
 		for _, be := range v {
 			for _, fe := range be.Files {
-				paths = append(paths, fe.Path)
+				paths = append(paths, fio.FileRepr{
+					Path: fe.Path,
+					Size: fe.Size,
+				})
 			}
 		}
 	}
@@ -153,11 +157,16 @@ func getFilesForBackup(path string) ([]BackupFileEntry, error) {
 		if err != nil {
 			return nil, err
 		}
+		stat, err := os.Stat(f)
+		if err != nil {
+			return nil, err
+		}
 		files = append(files, BackupFileEntry{
 			Path:     filepath.ToSlash(f),
 			RelPath:  filepath.ToSlash(relPathFile),
 			AbsPath:  filepath.ToSlash(absPathFile),
 			Basename: filepath.Base(f),
+			Size:     stat.Size(),
 		})
 	}
 	return files, nil

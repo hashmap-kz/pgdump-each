@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"gopgdump/internal/fio"
+
 	"github.com/hashmap-kz/workerfn/pkg/concur"
 
 	"gopgdump/config"
@@ -73,6 +75,10 @@ func uploadSftp() error {
 	err = uploadOnRemote(u)
 	err = deleteOnRemote(u)
 
+	if cfg.Upload.CheckTotalCntAndSizeAfterUpload {
+		err = calcTotals(u)
+	}
+
 	return err
 }
 
@@ -93,6 +99,10 @@ func uploadS3() error {
 
 	err = uploadOnRemote(u)
 	err = deleteOnRemote(u)
+
+	if cfg.Upload.CheckTotalCntAndSizeAfterUpload {
+		err = calcTotals(u)
+	}
 
 	return err
 }
@@ -228,16 +238,43 @@ func uploadWorker(_ context.Context, t uploadTask) (string, error) {
 	return "", nil
 }
 
-func makeRelativeMap(basepath string, input []string) (map[string]bool, error) {
+func makeRelativeMap(basepath string, input []fio.FileRepr) (map[string]bool, error) {
 	basepath = filepath.ToSlash(basepath)
 	result := make(map[string]bool)
 	for _, f := range input {
-		f = filepath.ToSlash(f)
-		rel, err := filepath.Rel(basepath, f)
+		rel, err := filepath.Rel(basepath, filepath.ToSlash(f.Path))
 		if err != nil {
 			return nil, err
 		}
 		result[filepath.ToSlash(rel)] = true
 	}
 	return result, nil
+}
+
+func calcTotals(u uploader.Uploader) error {
+	remoteFiles, err := u.ListObjects()
+	if err != nil {
+		return err
+	}
+	localFiles, err := local.ListObjects()
+	if err != nil {
+		return err
+	}
+
+	if len(remoteFiles) != len(localFiles) {
+		return fmt.Errorf("remote/local count mismatch")
+	}
+
+	calcTotalSize := func(files []fio.FileRepr) int64 {
+		var s int64
+		for _, f := range files {
+			s += f.Size
+		}
+		return s
+	}
+	if calcTotalSize(remoteFiles) != calcTotalSize(localFiles) {
+		return fmt.Errorf("remote/local size mismatch")
+	}
+
+	return nil
 }

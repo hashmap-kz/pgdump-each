@@ -68,6 +68,7 @@ upload:
   enable: true
   retryAttempts: 2
   maxConcurrency: 8
+  checkTotalCntAndSizeAfterUpload: true
   sftp:
     enable: true
     host: "10.40.240.194"

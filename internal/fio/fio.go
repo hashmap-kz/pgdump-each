@@ -6,6 +6,11 @@ import (
 	"sort"
 )
 
+type FileRepr struct {
+	Path string
+	Size int64
+}
+
 func GetAllFilesInDir(localDir string) ([]string, error) {
 	var err error
 	result := []string{}

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 
+	"gopgdump/internal/fio"
+
 	"gopgdump/config"
 )
 
@@ -16,7 +18,7 @@ var (
 
 type Uploader interface {
 	Upload(localFilePath, remotePath string) error
-	ListObjects() ([]string, error)
+	ListObjects() ([]fio.FileRepr, error)
 	ListTopLevelDirs(reg *regexp.Regexp) (map[string]bool, error)
 	Close() error
 	GetType() UploaderType

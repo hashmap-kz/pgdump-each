@@ -10,6 +10,8 @@ import (
 	"regexp"
 	"strings"
 
+	"gopgdump/internal/fio"
+
 	cnfg "gopgdump/config"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -126,8 +128,8 @@ func (s *S3Storage) DeleteAll(prefix string) error {
 	return nil
 }
 
-func (s *S3Storage) ListObjects() ([]string, error) {
-	objects := []string{}
+func (s *S3Storage) ListObjects() ([]fio.FileRepr, error) {
+	objects := []fio.FileRepr{}
 	var continuationToken *string
 
 	for {
@@ -146,7 +148,16 @@ func (s *S3Storage) ListObjects() ([]string, error) {
 		// Collect object keys
 		if output != nil {
 			for _, obj := range output.Contents {
-				objects = append(objects, *obj.Key)
+				if obj.Key != nil {
+					var size int64
+					if obj.Size != nil {
+						size = *obj.Size
+					}
+					objects = append(objects, fio.FileRepr{
+						Path: *obj.Key,
+						Size: size,
+					})
+				}
 			}
 		}
 
