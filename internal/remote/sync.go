@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"path/filepath"
-	"sync"
 
 	"github.com/hashmap-kz/workerfn/pkg/concur"
 
@@ -21,33 +20,37 @@ type uploadTask struct {
 	remoteUploader uploader.Uploader
 }
 
+type remoteStorageTask struct {
+	fn func() error
+}
+
 func SyncLocalWithRemote() error {
 	cfg := config.Cfg()
 	if !cfg.Upload.Enable {
 		return nil
 	}
 
-	// NOTE: !!! adding new remote-storage increase wg cnt !!!
-	const numRemotes = 2
-	var wg sync.WaitGroup
-	errCh := make(chan error, numRemotes) // Buffered channel to avoid blocking
-	wg.Add(numRemotes)
-	go uploadRoutine(&wg, errCh, uploadSftp)
-	go uploadRoutine(&wg, errCh, uploadS3)
-	wg.Wait()
-	close(errCh)
+	// concurrently run tasks for all remotes at once
 
-	for err := range errCh {
-		slog.Error("remote", slog.String("sync-error", err.Error()))
+	filterFn := func(stubNoResults struct{}) bool {
+		return true
+	}
+	uploaderFn := func(_ context.Context, r remoteStorageTask) (stubNoResults struct{}, err error) {
+		return struct{}{}, r.fn()
+	}
+	_, errors := concur.ProcessConcurrentlyWithResult(
+		context.Background(),
+		[]remoteStorageTask{
+			{fn: uploadS3},
+			{fn: uploadSftp},
+		},
+		uploaderFn,
+		filterFn,
+	)
+	if len(errors) != 0 {
+		return fmt.Errorf("%s", errors[0].Error())
 	}
 	return nil
-}
-
-func uploadRoutine(wg *sync.WaitGroup, errCh chan<- error, uploadFunc func() error) {
-	defer wg.Done()
-	if err := uploadFunc(); err != nil {
-		errCh <- err
-	}
 }
 
 // remotes
@@ -65,6 +68,7 @@ func uploadSftp() error {
 	if err != nil {
 		return err
 	}
+	defer u.Close()
 
 	err = uploadOnRemote(u)
 	err = deleteOnRemote(u)
@@ -83,8 +87,9 @@ func uploadS3() error {
 
 	u, err := uploader.NewUploader(uploader.S3UploaderType, cfg.Upload)
 	if err != nil {
-		return nil
+		return err
 	}
+	defer u.Close()
 
 	err = uploadOnRemote(u)
 	err = deleteOnRemote(u)
