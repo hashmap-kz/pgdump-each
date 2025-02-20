@@ -21,6 +21,7 @@ type Uploader interface {
 	Close() error
 	GetType() UploaderType
 	DeleteAll(prefix string) error
+	GetDest() string
 }
 
 // NewUploader factory method to init uploader, based on its kind and config

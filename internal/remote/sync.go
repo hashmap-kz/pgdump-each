@@ -1,9 +1,13 @@
 package remote
 
 import (
+	"context"
+	"fmt"
 	"log/slog"
 	"path/filepath"
 	"sync"
+
+	"github.com/hashmap-kz/workerfn/pkg/concur"
 
 	"gopgdump/config"
 	"gopgdump/internal/local"
@@ -12,8 +16,9 @@ import (
 )
 
 type uploadTask struct {
-	localPath  string
-	remotePath string
+	localPath      string
+	remotePath     string
+	remoteUploader uploader.Uploader
 }
 
 func SyncLocalWithRemote() error {
@@ -127,24 +132,9 @@ func deleteOnRemote(u uploader.Uploader) error {
 	return nil
 }
 
-func getDest(u uploader.Uploader) string {
-	cfg := config.Cfg()
-
-	if u.GetType() == uploader.S3UploaderType {
-		// bucket-level
-		return ""
-	}
-
-	if u.GetType() == uploader.SftpUploaderType {
-		return cfg.Upload.Sftp.Dest
-	}
-
-	return ""
-}
-
 func getFilesToUpload(u uploader.Uploader) ([]uploadTask, error) {
 	cfg := config.Cfg()
-	dest := getDest(u)
+	dest := u.GetDest()
 
 	// local and remote backups
 	remoteFiles, err := u.ListObjects()
@@ -171,8 +161,9 @@ func getFilesToUpload(u uploader.Uploader) ([]uploadTask, error) {
 		if !relativeMapRemote[localFile] {
 			// make actual paths from relatives (we compare relatives, but working with actual)
 			filesToUploadOnRemote = append(filesToUploadOnRemote, uploadTask{
-				localPath:  filepath.Join(cfg.Dest, localFile),
-				remotePath: filepath.ToSlash(filepath.Join(dest, localFile)),
+				localPath:      filepath.Join(cfg.Dest, localFile),
+				remotePath:     filepath.ToSlash(filepath.Join(dest, localFile)),
+				remoteUploader: u,
 			})
 		}
 	}
@@ -181,54 +172,55 @@ func getFilesToUpload(u uploader.Uploader) ([]uploadTask, error) {
 }
 
 func uploadOnRemote(u uploader.Uploader) error {
-	// prepare tasks
 	filesToUploadOnRemote, err := getFilesToUpload(u)
 	if err != nil {
 		return err
 	}
 
-	// upload concurrently
-	workerCount := 8
-	uploadTasksCh := make(chan uploadTask, len(filesToUploadOnRemote))
-	var wg sync.WaitGroup
-	for i := 0; i < workerCount; i++ {
-		wg.Add(1)
-		go uploadWorker(i, u, uploadTasksCh, &wg)
+	filterFn := func(result string) bool {
+		return result != ""
 	}
-	for _, db := range filesToUploadOnRemote {
-		uploadTasksCh <- db
-	}
-	close(uploadTasksCh)
-	wg.Wait()
 
+	// TODO: maxConcurrency config
+	const workerLimit = 8
+
+	_, errors := concur.ProcessConcurrentlyWithResultAndLimit(
+		context.Background(),
+		workerLimit,
+		filesToUploadOnRemote,
+		uploadWorker,
+		filterFn)
+
+	if len(errors) != 0 {
+		return fmt.Errorf("upload failed for: %s", u.GetType())
+	}
 	return nil
 }
 
-func uploadWorker(worker int, u uploader.Uploader, tasks <-chan uploadTask, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for t := range tasks {
-		err := u.Upload(t.localPath, t.remotePath)
-		if err != nil {
-			slog.Error("remote",
-				slog.String("action", "upload"),
-				slog.String("storage", string(u.GetType())),
-				slog.Int("worker", worker),
-				slog.String("local-path", filepath.ToSlash(t.localPath)),
-				slog.String("remote-path", filepath.ToSlash(t.remotePath)),
-				slog.String("err", err.Error()),
-			)
-		} else {
-			slog.Debug("remote",
-				slog.String("action", "upload"),
-				slog.String("storage", string(u.GetType())),
-				slog.Int("worker", worker),
-				slog.String("local-path", filepath.ToSlash(t.localPath)),
-				slog.String("remote-path", filepath.ToSlash(t.remotePath)),
-				slog.String("status", "ok"),
-			)
-		}
+func uploadWorker(_ context.Context, t uploadTask) (string, error) {
+	err := t.remoteUploader.Upload(t.localPath, t.remotePath)
+	if err != nil {
+		slog.Error("remote",
+			slog.String("action", "upload"),
+			slog.String("storage", string(t.remoteUploader.GetType())),
+			slog.String("local-path", filepath.ToSlash(t.localPath)),
+			slog.String("remote-path", filepath.ToSlash(t.remotePath)),
+			slog.String("err", err.Error()),
+		)
+		return "", fmt.Errorf("upload failed. remote: %s, path: %s",
+			string(t.remoteUploader.GetType()),
+			filepath.ToSlash(t.remotePath),
+		)
 	}
+
+	slog.Debug("remote",
+		slog.String("action", "upload"),
+		slog.String("storage", string(t.remoteUploader.GetType())),
+		slog.String("local-path", filepath.ToSlash(t.localPath)),
+		slog.String("remote-path", filepath.ToSlash(t.remotePath)),
+		slog.String("status", "ok"),
+	)
+	return "", nil
 }
 
 func makeRelativeMap(basepath string, input []string) (map[string]bool, error) {

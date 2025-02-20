@@ -188,6 +188,10 @@ func (s *S3Storage) ListTopLevelDirs(reg *regexp.Regexp) (map[string]bool, error
 	return prefixes, nil
 }
 
+func (s *S3Storage) GetDest() string {
+	return ""
+}
+
 func (s *S3Storage) Close() error {
 	return nil
 }

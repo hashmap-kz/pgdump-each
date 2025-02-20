@@ -184,7 +184,10 @@ func (s *SFTPStorage) DeleteAll(path string) error {
 	}
 }
 
-// Close closes the SFTP connection
+func (s *SFTPStorage) GetDest() string {
+	return s.config.Dest
+}
+
 func (s *SFTPStorage) Close() error {
 	var err error
 	if s.sftpClient != nil {

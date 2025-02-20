@@ -30,6 +30,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.14 // indirect
 	github.com/aws/smithy-go v1.22.2 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/hashmap-kz/workerfn v0.0.0-20250220032325-78e8ba2f2d90 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/kr/fs v0.1.0 // indirect
