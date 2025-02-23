@@ -7,11 +7,11 @@ require (
 	github.com/aws/aws-sdk-go-v2/config v1.29.7
 	github.com/aws/aws-sdk-go-v2/credentials v1.17.60
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.77.1
-	github.com/hashmap-kz/workerfn v1.0.1
+	github.com/hashmap-kz/workerfn v1.0.3
 	github.com/jackc/pgx/v5 v5.7.2
 	github.com/pkg/sftp v1.13.7
 	github.com/stretchr/testify v1.10.0
-	golang.org/x/crypto v0.33.0
+	golang.org/x/crypto v0.34.0
 	sigs.k8s.io/yaml v1.4.0
 )
 

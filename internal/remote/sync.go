@@ -187,17 +187,13 @@ func uploadOnRemote(u uploader.Uploader) error {
 	if err != nil {
 		return err
 	}
-
-	filterFn := func(result string) bool {
-		return result != ""
-	}
-
+	
 	_, errors := concur.ProcessConcurrentlyWithResultAndLimit(
 		context.Background(),
 		getUploadMaxConcurrency(),
 		filesToUploadOnRemote,
 		uploadWorker,
-		filterFn)
+	)
 
 	if len(errors) != 0 {
 		return fmt.Errorf("upload failed for: %s", u.GetType())
