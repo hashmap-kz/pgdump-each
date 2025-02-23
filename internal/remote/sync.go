@@ -37,12 +37,14 @@ func SyncLocalWithRemote() error {
 	uploaderFn := func(_ context.Context, r remoteStorageTask) error {
 		return r.fn()
 	}
-	errors := concur.ProcessConcurrently(
+	tasks := []remoteStorageTask{
+		{fn: uploadS3},
+		{fn: uploadSftp},
+	}
+	errors := concur.ProcessConcurrentlyWithLimit(
 		context.Background(),
-		[]remoteStorageTask{
-			{fn: uploadS3},
-			{fn: uploadSftp},
-		},
+		len(tasks),
+		tasks,
 		uploaderFn,
 	)
 	if len(errors) != 0 {
@@ -187,7 +189,7 @@ func uploadOnRemote(u uploader.Uploader) error {
 	if err != nil {
 		return err
 	}
-	
+
 	_, errors := concur.ProcessConcurrentlyWithResultAndLimit(
 		context.Background(),
 		getUploadMaxConcurrency(),
