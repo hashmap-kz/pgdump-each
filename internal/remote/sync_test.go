@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"gopgdump/internal/fio"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,36 +11,38 @@ func TestMakeRelativeMap(t *testing.T) {
 	tests := []struct {
 		name      string
 		basepath  string
-		input     []string
+		input     []fio.FileRepr
 		expected  map[string]bool
 		expectErr bool
 	}{
 		{
 			name:     "Normal case with relative paths",
 			basepath: "/home/user",
-			input:    []string{"/home/user/file1.txt", "/home/user/docs/file2.txt"},
+			input: []fio.FileRepr{
+				{Path: "/home/user/file1.txt"},
+				{Path: "/home/user/docs/file2.txt"},
+			},
 			expected: map[string]bool{"file1.txt": true, "docs/file2.txt": true},
 		},
 		{
 			name:     "Handles paths with slashes",
 			basepath: "/home/user/",
-			input:    []string{"/home/user//file1.txt", "/home/user/docs//file2.txt"},
+			input: []fio.FileRepr{
+				{Path: "/home/user//file1.txt"},
+				{Path: "/home/user/docs//file2.txt"},
+			},
 			expected: map[string]bool{"file1.txt": true, "docs/file2.txt": true},
 		},
 		{
 			name:     "Basepath is input itself",
 			basepath: "/home/user/docs",
-			input:    []string{"/home/user/docs"},
+			input: []fio.FileRepr{
+				{
+					Path: "/home/user/docs",
+				},
+			},
 			expected: map[string]bool{".": true},
 		},
-		// TODO: fix
-		//{
-		//	name:      "Error case - Unrelated path",
-		//	basepath:  "/home/user",
-		//	input:     []string{"/other/path/file.txt"},
-		//	expected:  nil,
-		//	expectErr: true,
-		//},
 	}
 
 	for _, tt := range tests {
