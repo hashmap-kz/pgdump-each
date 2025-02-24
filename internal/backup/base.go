@@ -112,7 +112,6 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 		"--format=tar",
 		"--gzip",
 		"--verbose",
-		"--verbose", // yes, twice
 	}
 
 	// execute dump CMD

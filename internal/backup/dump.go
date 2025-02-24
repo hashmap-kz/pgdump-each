@@ -68,6 +68,9 @@ func pgDumpWorker(databases <-chan config.PgDumpDatabase, wg *sync.WaitGroup) {
 func dumpDatabase(db config.PgDumpDatabase) error {
 	var err error
 	cfg := config.Cfg()
+	if !cfg.Dump.Enable {
+		return nil
+	}
 
 	pgDump, err := exec.LookPath("pg_dump")
 	if err != nil {
