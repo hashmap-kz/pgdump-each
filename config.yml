@@ -4,11 +4,9 @@ printDumpLogs: false
 # pg_dump
 dump:
   enable: true
-  jobs: 5
-  dumpGlobals: true
-  dumpConfigs: true
-  saveDumpLog: true
-  dbs:
+  # how many "pg_dump" execs may be run at once, default=2
+  maxConcurrency: 8
+  databases:
     - host: localhost
       port: 5432
       username: postgres
@@ -21,6 +19,8 @@ dump:
       excludeSchemas: [ ]
       tables: [ ]
       excludeTables: [ ]
+      # default=4
+      jobs: 8
 
     - host: localhost
       port: 5432
@@ -44,6 +44,8 @@ dump:
 base:
   enable: false
   compress: true
+  # how many "pg_basebackup" execs may be run at once, default=2
+  maxConcurrency: 2
   clusters:
     - host: localhost
       port: 5432
@@ -67,6 +69,7 @@ logger:
 upload:
   enable: true
   retryAttempts: 2
+  # how many files may be uploaded at once, default=2
   maxConcurrency: 16
   checkTotalCntAndSizeAfterUpload: true
   sftp:

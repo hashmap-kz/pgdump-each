@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"gopgdump/internal/common"
+
 	"gopgdump/internal/connstr"
 
 	"gopgdump/internal/timestamp"
@@ -23,10 +25,10 @@ func RunPgDumps() {
 		return
 	}
 
-	databases := cfg.Dump.DBS
+	databases := cfg.Dump.Databases
 
 	// Number of concurrent workers
-	workerCount := 3
+	workerCount := common.GetMaxConcurrency(cfg.Dump.MaxConcurrency)
 	dbChan := make(chan config.PgDumpDatabase, len(databases))
 	var wg sync.WaitGroup
 
@@ -78,9 +80,9 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 	}
 
 	// set jobs
-	jobs := cfg.Dump.Jobs
+	jobs := db.Jobs
 	if jobs <= 0 || jobs >= 32 {
-		jobs = 2
+		jobs = config.PgDumpJobsDefault
 	}
 
 	slog.Info("backup",

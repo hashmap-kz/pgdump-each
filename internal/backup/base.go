@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"gopgdump/internal/common"
+
 	"gopgdump/internal/connstr"
 
 	"gopgdump/config"
@@ -25,7 +27,7 @@ func RunPgBasebackups() {
 	clusters := cfg.Base.Clusters
 
 	// Number of concurrent workers
-	workerCount := 3
+	workerCount := common.GetMaxConcurrency(cfg.Base.MaxConcurrency)
 	clusterChan := make(chan config.PgBaseBackupCluster, len(clusters))
 	var wg sync.WaitGroup
 

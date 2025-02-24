@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"path/filepath"
 
+	"gopgdump/internal/common"
+
 	"gopgdump/internal/fio"
 
 	"github.com/hashmap-kz/workerfn/pkg/concur"
@@ -185,6 +187,7 @@ func getFilesToUpload(u uploader.Uploader) ([]uploadTask, error) {
 }
 
 func uploadOnRemote(u uploader.Uploader) error {
+	cfg := config.Cfg()
 	filesToUploadOnRemote, err := getFilesToUpload(u)
 	if err != nil {
 		return err
@@ -192,7 +195,7 @@ func uploadOnRemote(u uploader.Uploader) error {
 
 	errors := concur.ProcessConcurrentlyWithLimit(
 		context.Background(),
-		getUploadMaxConcurrency(),
+		common.GetMaxConcurrency(cfg.Upload.MaxConcurrency),
 		filesToUploadOnRemote,
 		uploadWorker,
 	)
@@ -268,13 +271,4 @@ func calcTotals(u uploader.Uploader) error {
 	}
 
 	return nil
-}
-
-func getUploadMaxConcurrency() int {
-	cfg := config.Cfg()
-	maxConcurrency := cfg.Upload.MaxConcurrency
-	if maxConcurrency <= 0 || maxConcurrency >= 128 {
-		return 8
-	}
-	return maxConcurrency
 }

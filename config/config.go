@@ -17,6 +17,11 @@ var (
 	config *Config
 )
 
+const (
+	PgDumpJobsDefault     = 4
+	MaxConcurrencyDefault = 2
+)
+
 type Config struct {
 	Dest          string
 	Dump          PgDumpsConfig
@@ -28,18 +33,16 @@ type Config struct {
 }
 
 type PgDumpsConfig struct {
-	Enable      bool
-	Jobs        int
-	DumpGlobals bool
-	DumpConfigs bool
-	SaveDumpLog bool
-	DBS         []PgDumpDatabase
+	Enable         bool
+	MaxConcurrency int
+	Databases      []PgDumpDatabase
 }
 
 type PgBaseBackupsConfig struct {
-	Enable   bool
-	Compress bool
-	Clusters []PgBaseBackupCluster
+	Enable         bool
+	Compress       bool
+	MaxConcurrency int
+	Clusters       []PgBaseBackupCluster
 }
 
 type PgBaseBackupCluster struct {
@@ -64,6 +67,8 @@ type PgDumpDatabase struct {
 	ExcludeSchemas []string
 	Tables         []string
 	ExcludeTables  []string
+
+	Jobs int
 }
 
 type RetentionConfig struct {
@@ -194,7 +199,7 @@ func checkS3Config() {
 func checkNoDuplicateAmongHosts() {
 	// must not be duplicates: host+port+dbname
 	m := map[string]string{}
-	for _, db := range config.Dump.DBS {
+	for _, db := range config.Dump.Databases {
 		ips, err := xnet.LookupIP4Addresses(db.Host)
 		if err != nil {
 			log.Fatal(err)
