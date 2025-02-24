@@ -190,7 +190,7 @@ func uploadOnRemote(u uploader.Uploader) error {
 		return err
 	}
 
-	_, errors := concur.ProcessConcurrentlyWithResultAndLimit(
+	errors := concur.ProcessConcurrentlyWithLimit(
 		context.Background(),
 		getUploadMaxConcurrency(),
 		filesToUploadOnRemote,
@@ -203,7 +203,7 @@ func uploadOnRemote(u uploader.Uploader) error {
 	return nil
 }
 
-func uploadWorker(_ context.Context, t uploadTask) (string, error) {
+func uploadWorker(_ context.Context, t uploadTask) error {
 	err := t.remoteUploader.Upload(t.localPath, t.remotePath)
 	if err != nil {
 		slog.Error("remote",
@@ -213,7 +213,7 @@ func uploadWorker(_ context.Context, t uploadTask) (string, error) {
 			slog.String("remote-path", filepath.ToSlash(t.remotePath)),
 			slog.String("err", err.Error()),
 		)
-		return "", fmt.Errorf("upload failed. remote: %s, path: %s",
+		return fmt.Errorf("upload failed. remote: %s, path: %s",
 			string(t.remoteUploader.GetType()),
 			filepath.ToSlash(t.remotePath),
 		)
@@ -226,7 +226,7 @@ func uploadWorker(_ context.Context, t uploadTask) (string, error) {
 		slog.String("remote-path", filepath.ToSlash(t.remotePath)),
 		slog.String("status", "ok"),
 	)
-	return "", nil
+	return nil
 }
 
 func makeRelativeMap(basepath string, input []fio.FileRepr) (map[string]bool, error) {
