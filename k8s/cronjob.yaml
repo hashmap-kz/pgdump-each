@@ -1,0 +1,126 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: pgdump-cronjob
+
+---
+kind: PersistentVolumeClaim
+apiVersion: v1
+metadata:
+  name: pgdump-cronjob
+  namespace: pgdump-cronjob
+spec:
+  storageClassName: nfs-client
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 2Gi
+
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: pgdump-cronjob
+#   namespace: pgdump-cronjob
+# spec:
+#   storageClassName: csi-rbd-sc-rc2-delete
+#   volumeMode: Filesystem
+#   accessModes:
+#     - ReadWriteOnce
+#   resources:
+#     requests:
+#       storage: 2Gi
+
+# for simplicity, on production you should use secrets
+# and also, this config is expand env-vars during parsing.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgdump-cronjob
+  namespace: pgdump-cronjob
+data:
+  config-basic.yml: |
+    dbs:
+      dest: /opt/backups
+      hosts:
+        - host: 10.40.240.165
+          port: 30201
+          username: postgres
+          password: postgres
+          dbname: vault
+
+        - host: 10.40.240.189
+          port: 5432
+          username: postgres
+          password: postgres
+          dbname: pagila
+
+        - host: 10.40.240.189
+          port: 5432
+          username: postgres
+          password: postgres
+          dbname: keycloak_base
+
+      optFeatures:
+        retention:
+          enable: true
+          backupsToKeep: 2
+          retentionPeriod: "10m"
+
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: pgdump-cronjob
+  namespace: pgdump-cronjob
+spec:
+  # IMPORTANT_SETTINGS_PART_BEGIN
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      activeDeadlineSeconds: 3600
+      ttlSecondsAfterFinished: 600
+      template:
+        spec:
+          restartPolicy: Never
+          # IMPORTANT_SETTINGS_PART_END
+
+          volumes:
+            - name: storage
+              persistentVolumeClaim:
+                claimName: pgdump-cronjob
+                readOnly: false
+            - name: config
+              configMap:
+                name: pgdump-cronjob
+
+          containers:
+            - name: pgdump-cronjob
+              image: mailboxsq7/pgdump-cronjob:latest
+              env:
+                - name: TZ
+                  value: Asia/Aqtau
+              args:
+                - -c
+                - /etc/pgdump-cronjob/config-basic.yml
+
+              resources:
+                requests:
+                  memory: "128Mi"
+                  cpu: "32m"
+                limits:
+                  memory: "1024Mi"
+                  cpu: "2"
+
+              volumeMounts:
+                - mountPath: /opt/backups
+                  name: storage
+                - mountPath: /etc/pgdump-cronjob
+                  name: config
