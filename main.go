@@ -47,8 +47,8 @@ func main() {
 			)
 		} else {
 			slog.Info("pg_dump_result",
-				slog.String("server", server),
 				slog.Any("status", "ok"),
+				slog.String("server", server),
 			)
 		}
 	}
@@ -61,8 +61,8 @@ func main() {
 			)
 		} else {
 			slog.Info("pg_basebackup_result",
-				slog.String("server", server),
 				slog.Any("status", "ok"),
+				slog.String("server", server),
 			)
 		}
 	}

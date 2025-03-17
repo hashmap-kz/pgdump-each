@@ -191,8 +191,7 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 	slog.Info("backup",
 		slog.String("status", "ok"),
 		slog.String("mode", "pg_dump"),
-		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
-		slog.String("dbname", db.Dbname),
+		slog.String("server", fmt.Sprintf("%s:%d/%s", db.Host, db.Port, db.Dbname)),
 		slog.String("path", filepath.ToSlash(okDest)),
 	)
 	return nil
