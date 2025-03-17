@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log/slog"
 
-	"gopgdump/internal/remote"
+	"gopgdump/internal/notifier"
 
 	"gopgdump/internal/cleaner"
 
@@ -14,8 +14,6 @@ import (
 	"gopgdump/pkg/logger"
 
 	"gopgdump/internal/backup"
-
-	_ "github.com/jackc/pgx/v5"
 )
 
 func main() {
@@ -36,14 +34,41 @@ func main() {
 	}
 
 	// make backups
-	backup.RunPgDumps()
-	backup.RunPgBasebackups()
 
-	// sync with remotes, if any
-	err = remote.SyncLocalWithRemote()
-	if err != nil {
-		slog.Error("remote", slog.String("err", err.Error()))
+	dumpsResults := backup.RunPgDumps()
+	baseBackupResults := backup.RunPgBasebackups()
+
+	// print results, send messages
+	n := notifier.NewTgNotifier()
+	var results []*backup.ResultInfo
+	results = append(results, dumpsResults...)
+	results = append(results, baseBackupResults...)
+
+	for _, r := range results {
+		server := fmt.Sprintf("%s:%d/%s", r.Host, r.Port, r.Dbname)
+		if r.Dbname == "" {
+			server = fmt.Sprintf("%s:%d", r.Host, r.Port)
+		}
+		if r.Err != nil {
+			slog.Error(r.Mode+"_result",
+				slog.String("server", server),
+				slog.Any("err", r.Err),
+			)
+			n.SendMessage(&notifier.AlertRequest{
+				Status:  notifier.NotifyStatusError,
+				Message: fmt.Sprintf("%s failed!\nserver: %s.\nerror: %s", r.Mode, server, err.Error()),
+			})
+		} else {
+			slog.Info(r.Mode+"_result",
+				slog.Any("status", "ok"),
+				slog.String("server", server),
+			)
+			n.SendMessage(&notifier.AlertRequest{
+				Status:  notifier.NotifyStatusInfo,
+				Message: fmt.Sprintf("%s success!\nserver: %s", r.Mode, server),
+			})
+		}
 	}
 
-	fmt.Println("All backups completed.")
+	slog.Info("All backups completed.")
 }

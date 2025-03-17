@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"regexp"
 
-	"gopgdump/internal/fio"
-
 	"gopgdump/config"
 	"gopgdump/internal/naming"
 )
@@ -17,15 +15,6 @@ type BackupEntry struct {
 	RelPath    string
 	AbsPath    string
 	BackupInfo naming.BackupInfo
-	Files      []BackupFileEntry
-}
-
-type BackupFileEntry struct {
-	Path     string
-	RelPath  string
-	AbsPath  string
-	Basename string
-	Size     int64
 }
 
 // BackupIndex host+port+dbname=[]backups
@@ -38,7 +27,8 @@ func FindAllBackups() (BackupIndex, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, b := range backups {
+	for i := 0; i < len(backups); i++ { // rangeValCopy
+		b := backups[i]
 		// NOTE: key matters in exactly that form
 		// by that key retention is performed
 		key := fmt.Sprintf("%s-%s-%s", b.BackupInfo.Host, b.BackupInfo.Port, b.BackupInfo.Dbname)
@@ -46,41 +36,6 @@ func FindAllBackups() (BackupIndex, error) {
 	}
 
 	return result, nil
-}
-
-func ListObjects() ([]fio.FileRepr, error) {
-	index, err := FindAllBackups()
-	if err != nil {
-		return nil, err
-	}
-	paths := []fio.FileRepr{}
-	for _, v := range index {
-		for _, be := range v {
-			for _, fe := range be.Files {
-				paths = append(paths, fio.FileRepr{
-					Path: fe.Path,
-					Size: fe.Size,
-				})
-			}
-		}
-	}
-	return paths, nil
-}
-
-func ListTopLevelDirs(reg *regexp.Regexp) (map[string]bool, error) {
-	dirs := make(map[string]bool)
-	cfg := config.Cfg()
-
-	entries, err := os.ReadDir(cfg.Dest)
-	if err != nil {
-		return nil, err
-	}
-	for _, entry := range entries {
-		if entry.IsDir() && reg.MatchString(entry.Name()) {
-			dirs[filepath.ToSlash(entry.Name())] = true
-		}
-	}
-	return dirs, nil
 }
 
 func findDumpsDirs(reg *regexp.Regexp) ([]BackupEntry, error) {
@@ -125,49 +80,10 @@ func parseBackupInfo(path string) (BackupEntry, error) {
 		return BackupEntry{}, err
 	}
 
-	filesForBackup, err := getFilesForBackup(path)
-	if err != nil {
-		return BackupEntry{}, err
-	}
-
 	return BackupEntry{
 		Path:       filepath.ToSlash(path),
 		AbsPath:    filepath.ToSlash(absPath),
 		RelPath:    filepath.ToSlash(relPath),
 		BackupInfo: backupInfo,
-		Files:      filesForBackup,
 	}, nil
-}
-
-func getFilesForBackup(path string) ([]BackupFileEntry, error) {
-	cfg := config.Cfg()
-
-	filesInDir, err := fio.GetAllFilesInDir(path)
-	if err != nil {
-		return nil, err
-	}
-
-	files := []BackupFileEntry{}
-	for _, f := range filesInDir {
-		absPathFile, err := filepath.Abs(f)
-		if err != nil {
-			return nil, err
-		}
-		relPathFile, err := filepath.Rel(cfg.Dest, f)
-		if err != nil {
-			return nil, err
-		}
-		stat, err := os.Stat(f)
-		if err != nil {
-			return nil, err
-		}
-		files = append(files, BackupFileEntry{
-			Path:     filepath.ToSlash(f),
-			RelPath:  filepath.ToSlash(relPathFile),
-			AbsPath:  filepath.ToSlash(absPathFile),
-			Basename: filepath.Base(f),
-			Size:     stat.Size(),
-		})
-	}
-	return files, nil
 }

@@ -18,54 +18,72 @@ import (
 	"gopgdump/internal/timestamp"
 )
 
-func RunPgBasebackups() {
+func RunPgBasebackups() []*ResultInfo {
 	cfg := config.Cfg()
 	if !cfg.Base.Enable {
-		return
+		return nil
 	}
 
 	clusters := cfg.Base.Clusters
 
 	// Number of concurrent workers
 	workerCount := common.GetMaxConcurrency(cfg.Base.MaxConcurrency)
-	clusterChan := make(chan config.PgBaseBackupCluster, len(clusters))
+	clusterChan := make(chan *config.PgBaseBackupCluster, len(clusters))
+	resultChan := make(chan *ResultInfo, len(clusters))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
-		go pgBasebackupWorker(clusterChan, &wg)
+		go func() {
+			defer wg.Done()
+			for db := range clusterChan {
+				if err := dumpCluster(db); err != nil {
+					// log errors, and continue, don't care about,
+					// the dump is performed in a tmp (*.dirty) directory
+					slog.Error("backup",
+						slog.String("status", "error"),
+						slog.String("err", err.Error()),
+						slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
+					)
+					resultChan <- &ResultInfo{
+						Host: db.Host,
+						Port: db.Port,
+						Mode: "pg_basebackup",
+						Err:  err,
+					}
+				} else {
+					resultChan <- &ResultInfo{
+						Host: db.Host,
+						Port: db.Port,
+						Mode: "pg_basebackup",
+					}
+				}
+			}
+		}()
 	}
 
 	// Send clusters to the pgDumpWorker channel
 	for _, db := range clusters {
 		clusterChan <- db
 	}
+	close(clusterChan) // Close the task channel once all tasks are submitted
 
-	// Close the channel and wait for workers to finish
-	close(clusterChan)
-	wg.Wait()
-}
+	// Wait for all workers to finish
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
 
-// pgDumpWorker handles executing pg_dump tasks.
-func pgBasebackupWorker(clusters <-chan config.PgBaseBackupCluster, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for db := range clusters {
-		if err := dumpCluster(db); err != nil {
-			// log errors, and continue, don't care about,
-			// the dump is performed in a tmp (*.dirty) directory
-			slog.Error("backup",
-				slog.String("status", "error"),
-				slog.String("err", err.Error()),
-				slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
-			)
-		}
+	result := make([]*ResultInfo, 0, len(resultChan))
+	for r := range resultChan {
+		result = append(result, r)
 	}
+	return result
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpCluster(cluster config.PgBaseBackupCluster) error {
+func dumpCluster(cluster *config.PgBaseBackupCluster) error {
 	var err error
 	cfg := config.Cfg()
 
@@ -80,7 +98,7 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 		slog.String("cluster", fmt.Sprintf("%s:%d", cluster.Host, cluster.Port)),
 	)
 
-	connStrBasebackup, err := connstr.CreateConnStr(connstr.ConnStr{
+	connStrBasebackup, err := connstr.CreateConnStr(&connstr.ConnStr{
 		Host:     cluster.Host,
 		Port:     cluster.Port,
 		Username: cluster.Username,

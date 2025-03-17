@@ -14,7 +14,7 @@ type ConnStr struct {
 	Opts     map[string]string
 }
 
-func CreateConnStr(db ConnStr) (string, error) {
+func CreateConnStr(db *ConnStr) (string, error) {
 	connStr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s", db.Username, db.Password, db.Host, db.Port, db.Dbname)
 	if db.Dbname == "" {
 		// basebackup

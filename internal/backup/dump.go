@@ -19,55 +19,74 @@ import (
 	"gopgdump/config"
 )
 
-func RunPgDumps() {
+func RunPgDumps() []*ResultInfo {
 	cfg := config.Cfg()
 	if !cfg.Dump.Enable {
-		return
+		return nil
 	}
 
 	databases := cfg.Dump.Databases
 
 	// Number of concurrent workers
 	workerCount := common.GetMaxConcurrency(cfg.Dump.MaxConcurrency)
-	dbChan := make(chan config.PgDumpDatabase, len(databases))
+	dbChan := make(chan *config.PgDumpDatabase, len(databases))
+	resultChan := make(chan *ResultInfo, len(databases))
 	var wg sync.WaitGroup
 
 	// Start worker goroutines
 	for i := 0; i < workerCount; i++ {
 		wg.Add(1)
-		go pgDumpWorker(dbChan, &wg)
+		go func() {
+			defer wg.Done()
+			for db := range dbChan {
+				if err := dumpDatabase(db); err != nil {
+					// log errors, and continue, don't care about,
+					// the dump is performed in a tmp (*.dirty) directory
+					slog.Error("backup",
+						slog.String("status", "error"),
+						slog.String("err", err.Error()),
+						slog.String("server", fmt.Sprintf("%s:%d/%s", db.Host, db.Port, db.Dbname)),
+					)
+					resultChan <- &ResultInfo{
+						Host:   db.Host,
+						Port:   db.Port,
+						Dbname: db.Dbname,
+						Mode:   "pg_dump",
+						Err:    err,
+					}
+				} else {
+					resultChan <- &ResultInfo{
+						Host:   db.Host,
+						Port:   db.Port,
+						Dbname: db.Dbname,
+						Mode:   "pg_dump",
+					}
+				}
+			}
+		}()
 	}
 
 	// Send databases to the pgDumpWorker channel
 	for _, db := range databases {
 		dbChan <- db
 	}
+	close(dbChan) // Close the task channel once all tasks are submitted
 
-	// Close the channel and wait for workers to finish
-	close(dbChan)
-	wg.Wait()
-}
+	// Wait for all workers to finish
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
 
-// pgDumpWorker handles executing pg_dump tasks.
-func pgDumpWorker(databases <-chan config.PgDumpDatabase, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for db := range databases {
-		if err := dumpDatabase(db); err != nil {
-			// log errors, and continue, don't care about,
-			// the dump is performed in a tmp (*.dirty) directory
-			slog.Error("backup",
-				slog.String("status", "error"),
-				slog.String("err", err.Error()),
-				slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
-				slog.String("dbname", db.Dbname),
-			)
-		}
+	result := make([]*ResultInfo, 0, len(resultChan))
+	for r := range resultChan {
+		result = append(result, r)
 	}
+	return result
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(db config.PgDumpDatabase) error {
+func dumpDatabase(db *config.PgDumpDatabase) error {
 	var err error
 	cfg := config.Cfg()
 	if !cfg.Dump.Enable {
@@ -88,12 +107,11 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 	slog.Info("backup",
 		slog.String("status", "run"),
 		slog.String("mode", "pg_dump"),
-		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
-		slog.String("dbname", db.Dbname),
+		slog.String("server", fmt.Sprintf("%s:%d/%s", db.Host, db.Port, db.Dbname)),
 		slog.Int("jobs", jobs),
 	)
 
-	connStr, err := connstr.CreateConnStr(connstr.ConnStr{
+	connStr, err := connstr.CreateConnStr(&connstr.ConnStr{
 		Host:     db.Host,
 		Port:     db.Port,
 		Username: db.Username,
@@ -168,14 +186,13 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 	// if everything is ok, just rename a temporary dir into the target one
 	err = os.Rename(tmpDest, okDest)
 	if err != nil {
-		return fmt.Errorf("cannot rename %s to %s, cause: %w\n", tmpDest, okDest, err)
+		return fmt.Errorf("cannot rename %s to %s, cause: %w", tmpDest, okDest, err)
 	}
 
 	slog.Info("backup",
 		slog.String("status", "ok"),
 		slog.String("mode", "pg_dump"),
-		slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
-		slog.String("dbname", db.Dbname),
+		slog.String("server", fmt.Sprintf("%s:%d/%s", db.Host, db.Port, db.Dbname)),
 		slog.String("path", filepath.ToSlash(okDest)),
 	)
 	return nil

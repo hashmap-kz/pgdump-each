@@ -15,18 +15,8 @@ var loggerLevelMap = map[string]slog.Level{
 }
 
 func InitLogger(enc, lvl string) *slog.Logger {
-	tsFmt := "2006-01-02 15:04:05"
-
 	opts := &slog.HandlerOptions{
 		Level: getLoggerLevel(lvl),
-		ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.TimeKey {
-				// Convert time to custom format
-				t := a.Value.Time()
-				a.Value = slog.StringValue(t.Format(tsFmt))
-			}
-			return a
-		},
 	}
 	var logger *slog.Logger
 	if enc == "json" {
