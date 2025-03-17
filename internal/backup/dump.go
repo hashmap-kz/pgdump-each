@@ -60,7 +60,6 @@ func RunPgDumps() []*ResultInfo {
 						Port:   db.Port,
 						Dbname: db.Dbname,
 						Mode:   "pg_dump",
-						Err:    nil,
 					}
 				}
 			}
