@@ -59,3 +59,10 @@ logger:
   format: text
   # debug info warn error
   level: debug
+
+notify:
+  enable: true
+  telegram:
+    enable: true
+    token: "${TG_BOT_TOKEN}"
+    chatId: "${TG_BOT_CHAT_ID}"

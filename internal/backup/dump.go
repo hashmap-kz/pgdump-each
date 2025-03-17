@@ -51,6 +51,7 @@ func RunPgDumps() []*ResultInfo {
 						Host:   db.Host,
 						Port:   db.Port,
 						Dbname: db.Dbname,
+						Mode:   "pg_dump",
 						Err:    err,
 					}
 				} else {
@@ -58,6 +59,7 @@ func RunPgDumps() []*ResultInfo {
 						Host:   db.Host,
 						Port:   db.Port,
 						Dbname: db.Dbname,
+						Mode:   "pg_dump",
 						Err:    nil,
 					}
 				}

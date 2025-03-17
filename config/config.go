@@ -28,6 +28,7 @@ type Config struct {
 	Base          PgBaseBackupsConfig
 	Retention     RetentionConfig
 	Logger        LoggerConfig
+	Notify        NotifyConfig
 	PrintDumpLogs bool
 }
 
@@ -79,6 +80,19 @@ type RetentionConfig struct {
 type LoggerConfig struct {
 	Format string
 	Level  string
+}
+
+// notifier
+
+type NotifyConfig struct {
+	Enable   bool
+	Telegram NotifyTelegramConfig
+}
+
+type NotifyTelegramConfig struct {
+	Enable bool
+	Token  string
+	ChatID string
 }
 
 // LoadConfigFromFile unmarshal file into config struct

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 
+	"gopgdump/internal/notifier"
+
 	"gopgdump/internal/cleaner"
 
 	"gopgdump/internal/retention"
@@ -36,34 +38,35 @@ func main() {
 	dumpsResults := backup.RunPgDumps()
 	baseBackupResults := backup.RunPgBasebackups()
 
-	// print results
+	// print results, send messages
+	n := notifier.NewTgNotifier()
+	var results []*backup.ResultInfo
+	results = append(results, dumpsResults...)
+	results = append(results, baseBackupResults...)
 
-	for _, r := range dumpsResults {
+	for _, r := range results {
 		server := fmt.Sprintf("%s:%d/%s", r.Host, r.Port, r.Dbname)
-		if r.Err != nil {
-			slog.Error("pg_dump_result",
-				slog.String("server", server),
-				slog.Any("err", r.Err),
-			)
-		} else {
-			slog.Info("pg_dump_result",
-				slog.Any("status", "ok"),
-				slog.String("server", server),
-			)
+		if r.Dbname == "" {
+			server = fmt.Sprintf("%s:%d", r.Host, r.Port)
 		}
-	}
-	for _, r := range baseBackupResults {
-		server := fmt.Sprintf("%s:%d", r.Host, r.Port)
 		if r.Err != nil {
-			slog.Error("pg_basebackup_result",
+			slog.Error(r.Mode+"_result",
 				slog.String("server", server),
 				slog.Any("err", r.Err),
 			)
+			n.SendMessage(&notifier.AlertRequest{
+				Status:  notifier.NotifyStatusError,
+				Message: fmt.Sprintf("%s failed!\nserver: %s.\nerror: %s", r.Mode, server, err.Error()),
+			})
 		} else {
-			slog.Info("pg_basebackup_result",
+			slog.Info(r.Mode+"_result",
 				slog.Any("status", "ok"),
 				slog.String("server", server),
 			)
+			n.SendMessage(&notifier.AlertRequest{
+				Status:  notifier.NotifyStatusInfo,
+				Message: fmt.Sprintf("%s success!\nserver: %s", r.Mode, server),
+			})
 		}
 	}
 

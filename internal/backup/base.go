@@ -49,12 +49,14 @@ func RunPgBasebackups() []*ResultInfo {
 					resultChan <- &ResultInfo{
 						Host: db.Host,
 						Port: db.Port,
+						Mode: "pg_basebackup",
 						Err:  err,
 					}
 				} else {
 					resultChan <- &ResultInfo{
 						Host: db.Host,
 						Port: db.Port,
+						Mode: "pg_basebackup",
 					}
 				}
 			}
