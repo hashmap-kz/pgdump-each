@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 
-	"gopgdump/internal/remote"
-
 	"gopgdump/internal/cleaner"
 
 	"gopgdump/internal/retention"
@@ -14,8 +12,6 @@ import (
 	"gopgdump/pkg/logger"
 
 	"gopgdump/internal/backup"
-
-	_ "github.com/jackc/pgx/v5"
 )
 
 func main() {
@@ -38,12 +34,6 @@ func main() {
 	// make backups
 	backup.RunPgDumps()
 	backup.RunPgBasebackups()
-
-	// sync with remotes, if any
-	err = remote.SyncLocalWithRemote()
-	if err != nil {
-		slog.Error("remote", slog.String("err", err.Error()))
-	}
 
 	fmt.Println("All backups completed.")
 }

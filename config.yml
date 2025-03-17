@@ -22,12 +22,6 @@ dump:
       # default=4
       jobs: 8
 
-    - host: localhost
-      port: 5432
-      username: postgres
-      password: postgres
-      dbname: demo
-
     - host: 10.40.240.189
       port: 5432
       username: postgres
@@ -65,27 +59,3 @@ logger:
   format: text
   # debug info warn error
   level: debug
-
-upload:
-  enable: true
-  retryAttempts: 2
-  # how many files may be uploaded at once, default=2
-  maxConcurrency: 16
-  checkTotalCntAndSizeAfterUpload: true
-  sftp:
-    enable: true
-    host: "10.40.240.194"
-    port: "22"
-    user: "ansible"
-    pkeyPath: "${SSH_PKEY}"
-    passphrase: ""
-    dest: "/home/ansible/backups"
-  s3:
-    enable: true
-    endpointUrl: "${AWS_ENDPOINT_URL}"
-    accessKeyId: "${AWS_ACCESS_KEY_ID}"
-    secretAccessKey: "${AWS_SECRET_ACCESS_KEY}"
-    bucket: "tmp"
-    region: "main"
-    usePathStyle: true
-    disableSSL: true

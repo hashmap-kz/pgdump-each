@@ -51,24 +51,25 @@ data:
           username: postgres
           password: postgres
           dbname: vault
-
         - host: 10.40.240.189
           port: 5432
           username: postgres
           password: postgres
           dbname: pagila
-
         - host: 10.40.240.189
           port: 5432
           username: postgres
           password: postgres
           dbname: keycloak_base
-
-      optFeatures:
-        retention:
-          enable: true
-          backupsToKeep: 2
-          retentionPeriod: "10m"
+      retention:
+        enable: true
+        period: 1m
+        keepLast: 1
+      logger:
+        # text/json
+        format: text
+        # debug info warn error
+        level: debug
 
 ---
 apiVersion: batch/v1
