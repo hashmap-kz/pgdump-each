@@ -29,7 +29,7 @@ func RunPgDumps() []*ResultInfo {
 
 	// Number of concurrent workers
 	workerCount := common.GetMaxConcurrency(cfg.Dump.MaxConcurrency)
-	dbChan := make(chan config.PgDumpDatabase, len(databases))
+	dbChan := make(chan *config.PgDumpDatabase, len(databases))
 	resultChan := make(chan *ResultInfo, len(databases))
 	var wg sync.WaitGroup
 
@@ -78,7 +78,7 @@ func RunPgDumps() []*ResultInfo {
 		close(resultChan)
 	}()
 
-	var result []*ResultInfo
+	result := make([]*ResultInfo, 0, len(resultChan))
 	for r := range resultChan {
 		result = append(result, r)
 	}
@@ -86,7 +86,7 @@ func RunPgDumps() []*ResultInfo {
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(db config.PgDumpDatabase) error {
+func dumpDatabase(db *config.PgDumpDatabase) error {
 	var err error
 	cfg := config.Cfg()
 	if !cfg.Dump.Enable {
@@ -111,7 +111,7 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 		slog.Int("jobs", jobs),
 	)
 
-	connStr, err := connstr.CreateConnStr(connstr.ConnStr{
+	connStr, err := connstr.CreateConnStr(&connstr.ConnStr{
 		Host:     db.Host,
 		Port:     db.Port,
 		Username: db.Username,
@@ -186,7 +186,7 @@ func dumpDatabase(db config.PgDumpDatabase) error {
 	// if everything is ok, just rename a temporary dir into the target one
 	err = os.Rename(tmpDest, okDest)
 	if err != nil {
-		return fmt.Errorf("cannot rename %s to %s, cause: %w\n", tmpDest, okDest, err)
+		return fmt.Errorf("cannot rename %s to %s, cause: %w", tmpDest, okDest, err)
 	}
 
 	slog.Info("backup",

@@ -35,14 +35,14 @@ type Config struct {
 type PgDumpsConfig struct {
 	Enable         bool
 	MaxConcurrency int
-	Databases      []PgDumpDatabase
+	Databases      []*PgDumpDatabase
 }
 
 type PgBaseBackupsConfig struct {
 	Enable         bool
 	Compress       bool
 	MaxConcurrency int
-	Clusters       []PgBaseBackupCluster
+	Clusters       []*PgBaseBackupCluster
 }
 
 type PgBaseBackupCluster struct {
@@ -142,7 +142,8 @@ func checkConfigHard() {
 func checkNoDuplicateAmongHosts() {
 	// must not be duplicates: host+port+dbname
 	m := map[string]string{}
-	for _, db := range config.Dump.Databases {
+	for i := 0; i < len(config.Dump.Databases); i++ { // rangeValCopy
+		db := config.Dump.Databases[i]
 		ips, err := xnet.LookupIP4Addresses(db.Host)
 		if err != nil {
 			log.Fatal(err)

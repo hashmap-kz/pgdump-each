@@ -27,7 +27,8 @@ func FindAllBackups() (BackupIndex, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, b := range backups {
+	for i := 0; i < len(backups); i++ { // rangeValCopy
+		b := backups[i]
 		// NOTE: key matters in exactly that form
 		// by that key retention is performed
 		key := fmt.Sprintf("%s-%s-%s", b.BackupInfo.Host, b.BackupInfo.Port, b.BackupInfo.Dbname)

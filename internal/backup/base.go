@@ -28,7 +28,7 @@ func RunPgBasebackups() []*ResultInfo {
 
 	// Number of concurrent workers
 	workerCount := common.GetMaxConcurrency(cfg.Base.MaxConcurrency)
-	clusterChan := make(chan config.PgBaseBackupCluster, len(clusters))
+	clusterChan := make(chan *config.PgBaseBackupCluster, len(clusters))
 	resultChan := make(chan *ResultInfo, len(clusters))
 	var wg sync.WaitGroup
 
@@ -75,7 +75,7 @@ func RunPgBasebackups() []*ResultInfo {
 		close(resultChan)
 	}()
 
-	var result []*ResultInfo
+	result := make([]*ResultInfo, 0, len(resultChan))
 	for r := range resultChan {
 		result = append(result, r)
 	}
@@ -83,7 +83,7 @@ func RunPgBasebackups() []*ResultInfo {
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpCluster(cluster config.PgBaseBackupCluster) error {
+func dumpCluster(cluster *config.PgBaseBackupCluster) error {
 	var err error
 	cfg := config.Cfg()
 
@@ -98,7 +98,7 @@ func dumpCluster(cluster config.PgBaseBackupCluster) error {
 		slog.String("cluster", fmt.Sprintf("%s:%d", cluster.Host, cluster.Port)),
 	)
 
-	connStrBasebackup, err := connstr.CreateConnStr(connstr.ConnStr{
+	connStrBasebackup, err := connstr.CreateConnStr(&connstr.ConnStr{
 		Host:     cluster.Host,
 		Port:     cluster.Port,
 		Username: cluster.Username,

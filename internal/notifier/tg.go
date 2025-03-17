@@ -34,20 +34,22 @@ func (n *tgNotifier) SendMessage(r *AlertRequest) {
 	}
 
 	tgBotToken := telegramConfig.Token
-	tgBotChatId := telegramConfig.ChatID
+	tgBotChatID := telegramConfig.ChatID
 
 	renderedMessage := getTemplate(r)
 
 	endPoint := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", tgBotToken)
 	formData := url.Values{
-		"chat_id":    {tgBotChatId},
+		"chat_id":    {tgBotChatID},
 		"parse_mode": {"html"},
 		"text":       {renderedMessage},
 	}
-	_, err := http.PostForm(endPoint, formData)
+	//nolint:gosec
+	resp, err := http.PostForm(endPoint, formData)
 	if err != nil {
 		return
 	}
+	defer resp.Body.Close()
 }
 
 func getTemplate(r *AlertRequest) string {

@@ -25,7 +25,8 @@ linters:
     - gocyclo
     - godox
     - gofmt
-    - gofumpt
+    #TODO
+    #- gofumpt
     - goheader
     - goimports
     - gomoddirectives

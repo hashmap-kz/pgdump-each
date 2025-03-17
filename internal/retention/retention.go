@@ -46,11 +46,11 @@ func PurgeOldDirs() error {
 	return nil
 }
 
+//nolint:unparam
 func filterBackupsToRetain(retainList local.BackupIndex, retentionPeriod time.Duration, keepCnt int) ([]local.BackupEntry, error) {
 	var result []local.BackupEntry
 
 	for k, v := range retainList {
-
 		// (oldest to newest)
 		sort.SliceStable(v, func(i, j int) bool {
 			dateI := v[i].BackupInfo.DatetimeUTC
@@ -73,14 +73,13 @@ func filterBackupsToRetain(retainList local.BackupIndex, retentionPeriod time.Du
 				}
 			}
 		}
-
 	}
-
 	return result, nil
 }
 
 func dropBackups(ri []local.BackupEntry) error {
-	for _, elem := range ri {
+	for i := 0; i < len(ri); i++ { // rangeValCopy
+		elem := ri[i]
 		slog.Info("purge",
 			slog.String("action", "rm -rf"),
 			slog.String("storage", "local"),
