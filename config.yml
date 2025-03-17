@@ -36,7 +36,7 @@ dump:
 
 # pg_basebackup
 base:
-  enable: false
+  enable: true
   compress: true
   # how many "pg_basebackup" execs may be run at once, default=2
   maxConcurrency: 2
