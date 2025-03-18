@@ -109,7 +109,7 @@ spec:
                 - name: TZ
                   value: Asia/Aqtau
               args:
-                - -c
+                - -config
                 - /etc/pgdump-cronjob/config-basic.yml
 
               resources:
