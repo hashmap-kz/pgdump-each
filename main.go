@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"log"
 	"log/slog"
 
 	"gopgdump/internal/notifier"
@@ -17,7 +19,16 @@ import (
 )
 
 func main() {
-	cfg := config.LoadConfigFromFile("config.yml")
+	// parse cmd args
+	var configPath string
+	flag.StringVar(&configPath, "config", "", "Example: -config /etc/gopgdump/config.yml")
+	flag.Parse()
+	if configPath == "" {
+		flag.Usage()
+		log.Fatal("config-path not provided")
+	}
+
+	cfg := config.LoadConfigFromFile(configPath)
 	slog.SetDefault(logger.InitLogger(cfg.Logger.Format, cfg.Logger.Level))
 
 	// Before concurrent tasks are run
@@ -56,7 +67,7 @@ func main() {
 			)
 			n.SendMessage(&notifier.AlertRequest{
 				Status:  notifier.NotifyStatusError,
-				Message: fmt.Sprintf("%s failed!\nserver: %s.\nerror: %s", r.Mode, server, err.Error()),
+				Message: fmt.Sprintf("%s failed!\nserver: %s.\nerror: %s", r.Mode, server, r.Err.Error()),
 			})
 		} else {
 			slog.Info(r.Mode+"_result",

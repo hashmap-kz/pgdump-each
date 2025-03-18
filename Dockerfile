@@ -1,4 +1,4 @@
-FROM golang:1.23.4-alpine AS build-stage
+FROM golang:1.24.0-alpine AS build-stage
 
 WORKDIR /app
 
@@ -10,8 +10,8 @@ COPY . .
 
 ENV CGO_ENABLED=0 GOOS=linux GOARCH=amd64
 
-RUN go build -ldflags="-s -w" -o ./pgdump-cronjob
+RUN go build -ldflags="-s -w" -o ./gopgdump
 
 RUN apk add --no-cache postgresql-client
 
-ENTRYPOINT ["/app/pgdump-cronjob"]
+ENTRYPOINT ["/app/gopgdump"]

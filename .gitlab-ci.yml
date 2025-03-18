@@ -1,0 +1,42 @@
+stages:
+  - bin
+  - img
+
+variables:
+  GIT_SSL_NO_VERIFY: "1"
+  APP_IMAGE: ${CI_REGISTRY}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/${CI_COMMIT_REF_NAME}/app
+
+before_script:
+  - export VAULT_SKIP_VERIFY=true
+  - export VAULT_ADDR=https://localhost:8200
+
+img:
+  stage: img
+  image: docker:latest
+  services:
+    - docker:dind
+  tags:
+    - dind
+  script:
+    - docker login ${CI_REGISTRY} -u $DOCKER_USER -p $DOCKER_PASSWORD
+    - docker buildx build -t $APP_IMAGE
+      --build-arg APP_ENVIRONMENT=$CI_COMMIT_REF_NAME
+      -f Dockerfile .
+    - docker push $APP_IMAGE
+  only:
+    - master
+
+bin:
+  stage: bin
+  image: golang:1.24.0-alpine
+  services:
+    - docker:dind
+  tags:
+    - dind
+  script:
+    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o gopgdump main.go
+  artifacts:
+    paths:
+      - gopgdump
+  only:
+    - master

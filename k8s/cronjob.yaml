@@ -104,7 +104,7 @@ spec:
 
           containers:
             - name: pgdump-cronjob
-              image: mailboxsq7/pgdump-cronjob:latest
+              image: "${APP_IMAGE}"
               env:
                 - name: TZ
                   value: Asia/Aqtau
