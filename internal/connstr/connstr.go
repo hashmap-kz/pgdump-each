@@ -2,7 +2,7 @@ package connstr
 
 import (
 	"fmt"
-	"net/url"
+	"strings"
 )
 
 type ConnStr struct {
@@ -21,15 +21,11 @@ func CreateConnStr(db *ConnStr) (string, error) {
 		connStr = fmt.Sprintf("postgres://%s:%s@%s:%d", db.Username, db.Password, db.Host, db.Port)
 	}
 	if len(db.Opts) > 0 {
-		query := url.Values{}
+		query := []string{}
 		for key, value := range db.Opts {
-			query.Set(key, value)
+			query = append(query, fmt.Sprintf("%s=%s", key, value))
 		}
-		connStr = connStr + "?" + query.Encode()
+		connStr = connStr + "?" + strings.Join(query, "&")
 	}
-	parse, err := url.Parse(connStr)
-	if err != nil {
-		return "", err
-	}
-	return parse.String(), nil
+	return connStr, nil
 }

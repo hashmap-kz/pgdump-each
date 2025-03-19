@@ -24,17 +24,24 @@ img:
       -f Dockerfile .
     - docker push $APP_IMAGE
   only:
-    - master
+    refs:
+      - master
+    changes:
+      - Dockerfile
 
 bin:
   stage: bin
   image: golang:1.24.0-alpine
+  before_script:
+    - apk update && apk add --no-cache git
   services:
     - docker:dind
   tags:
     - dind
   script:
-    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o gopgdump main.go
+    - export VERSION=$(git describe --tags --always)
+    - echo "build version ${VERSION}"
+    - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -X main.Version=${VERSION}" -o gopgdump main.go
   artifacts:
     paths:
       - gopgdump

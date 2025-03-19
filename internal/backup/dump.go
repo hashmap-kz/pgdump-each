@@ -93,7 +93,7 @@ func dumpDatabase(db *config.PgDumpDatabase) error {
 		return nil
 	}
 
-	pgDump, err := exec.LookPath("pg_dump")
+	pgDump, err := common.GetExec(db.Execs.PgDump, "pg_dump")
 	if err != nil {
 		return err
 	}
@@ -177,8 +177,6 @@ func dumpDatabase(db *config.PgDumpDatabase) error {
 	} else {
 		cmd.Stderr = &stderrBuf
 	}
-	// Set environment variables for authentication
-	cmd.Env = append(cmd.Env, fmt.Sprintf("PGPASSWORD=%s", db.Password))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to dump %s: %v - %s", db.Dbname, err, stderrBuf.String())
 	}

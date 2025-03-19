@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"os"
 
 	"gopgdump/internal/notifier"
 
@@ -18,18 +19,28 @@ import (
 	"gopgdump/internal/backup"
 )
 
+// TODO: add to linker opts with a tag name
+var Version = "1.0.5"
+
 func main() {
 	// parse cmd args
 	var configPath string
 	flag.StringVar(&configPath, "config", "", "Example: -config /etc/gopgdump/config.yml")
+	showVersion := flag.Bool("v", false, "Print version and exit")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println(Version)
+		os.Exit(0)
+	}
+
 	if configPath == "" {
 		flag.Usage()
 		log.Fatal("config-path not provided")
 	}
 
 	cfg := config.LoadConfigFromFile(configPath)
-	slog.SetDefault(logger.InitLogger(cfg.Logger.Format, cfg.Logger.Level))
+	slog.SetDefault(logger.InitLogger(cfg.LogDir, cfg.Logger.Format, cfg.Logger.Level))
 
 	// Before concurrent tasks are run
 	// 1) remove all '*.dirty' dirs, if any
@@ -55,12 +66,14 @@ func main() {
 	results = append(results, dumpsResults...)
 	results = append(results, baseBackupResults...)
 
+	var errors bool
 	for _, r := range results {
 		server := fmt.Sprintf("%s:%d/%s", r.Host, r.Port, r.Dbname)
 		if r.Dbname == "" {
 			server = fmt.Sprintf("%s:%d", r.Host, r.Port)
 		}
 		if r.Err != nil {
+			errors = true
 			slog.Error(r.Mode+"_result",
 				slog.String("server", server),
 				slog.Any("err", r.Err),
@@ -81,5 +94,9 @@ func main() {
 		}
 	}
 
-	slog.Info("All backups completed.")
+	if errors {
+		slog.Info("All backups completed. With errors. See logs for details.")
+	} else {
+		slog.Info("All backups completed. No errors")
+	}
 }

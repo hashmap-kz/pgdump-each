@@ -1,4 +1,5 @@
 dest: "./backups"
+logDir: "" # /var/log/gopgdump
 printDumpLogs: false
 
 # pg_dump
@@ -9,8 +10,8 @@ dump:
   databases:
     - host: localhost
       port: 5432
-      username: postgres
-      password: postgres
+      username: backup
+      password: ${PASS1}
       dbname: bookstore
       opts:
         connect_timeout: "5"
@@ -21,12 +22,17 @@ dump:
       excludeTables: [ ]
       # default=4
       jobs: 8
+      execs:
+        # example: /usr/lib/postgresql/17/bin/pg_dump
+        pg_dump: ""
 
     - host: 10.40.240.189
       port: 5432
       username: postgres
       password: postgres
       dbname: keycloak_base
+      execs:
+        pg_dump: "C:\\Program Files\\PostgreSQL\\17\\bin\\pg_dump.exe"
 
     - host: 10.40.240.165
       port: 30201
@@ -48,6 +54,10 @@ base:
       opts:
         connect_timeout: "5"
         sslmode: "disable"
+      execs:
+        pg_basebackup: ""     # example: /usr/lib/postgresql/17/bin/pg_basebackup
+        pg_archivecleanup: "" # example: /usr/lib/postgresql/17/bin/pg_archivecleanup
+        pg_verifybackup: ""   # example: /usr/lib/postgresql/17/bin/pg_verifybackup
 
 retention:
   enable: true

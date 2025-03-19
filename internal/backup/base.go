@@ -87,7 +87,7 @@ func dumpCluster(cluster *config.PgBaseBackupCluster) error {
 	var err error
 	cfg := config.Cfg()
 
-	pgBasebackup, err := exec.LookPath("pg_basebackup")
+	pgBasebackup, err := common.GetExec(cluster.Execs.PgBaseBackup, "pg_basebackup")
 	if err != nil {
 		return err
 	}
@@ -143,8 +143,6 @@ func dumpCluster(cluster *config.PgBaseBackupCluster) error {
 	} else {
 		cmd.Stderr = &stderrBuf
 	}
-	// Set environment variables for authentication
-	cmd.Env = append(cmd.Env, fmt.Sprintf("PGPASSWORD=%s", cluster.Password))
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to dump %s: %v - %s",
 			fmt.Sprintf("%s:%d", cluster.Host, cluster.Port),

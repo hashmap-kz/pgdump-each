@@ -23,13 +23,25 @@ const (
 )
 
 type Config struct {
-	Dest          string
-	Dump          PgDumpsConfig
-	Base          PgBaseBackupsConfig
-	Retention     RetentionConfig
-	Logger        LoggerConfig
-	Notify        NotifyConfig
+	Dest      string
+	Dump      PgDumpsConfig
+	Base      PgBaseBackupsConfig
+	Retention RetentionConfig
+	Logger    LoggerConfig
+	Notify    NotifyConfig
+
+	LogDir        string
 	PrintDumpLogs bool
+}
+
+type PgDumpExecsConfig struct {
+	PgDump string `json:"pg_dump,omitempty"`
+}
+
+type PgBaseBackupExecsConfig struct {
+	PgBaseBackup     string `json:"pg_basebackup,omitempty"`
+	PgArchiveCleanup string `json:"pg_archivecleanup,omitempty"`
+	PgVerifyBackup   string `json:"pg_verifybackup,omitempty"`
 }
 
 type PgDumpsConfig struct {
@@ -51,6 +63,7 @@ type PgBaseBackupCluster struct {
 	Username string
 	Password string
 	Opts     map[string]string
+	Execs    PgBaseBackupExecsConfig
 }
 
 type PgDumpDatabase struct {
@@ -61,6 +74,7 @@ type PgDumpDatabase struct {
 	Password string
 	Dbname   string
 	Opts     map[string]string
+	Execs    PgDumpExecsConfig
 
 	// optional filters
 	Schemas        []string

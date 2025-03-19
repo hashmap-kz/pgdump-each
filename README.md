@@ -1,7 +1,13 @@
-### Testing notes
+# gopgdumps
+
+### Настройка
+
+- Исполняемый файл собирается в артефакты
+- Переместить на нужный хост, распаковать, поместить в /usr/local/bin
+
+### Создать файл конфигурации и запись cron, например так.
 
 ```
-aws --endpoint-url="${AWS_ENDPOINT_URL}" s3 ls s3://tmp
-aws --endpoint-url="${AWS_ENDPOINT_URL}" s3 rm s3://tmp --recursive
+0 5 * * *   barman [ -x /usr/bin/barman ] && gopgdump -config /etc/gopgdump/config.yml
 ```
 
