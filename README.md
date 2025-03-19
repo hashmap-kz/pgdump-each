@@ -8,6 +8,6 @@
 ### Создать файл конфигурации и запись cron, например так.
 
 ```
-0 5 * * *   barman [ -x /usr/bin/barman ] && gopgdump -config /etc/gopgdump/config.yml
+0 5 * * * barman /usr/local/bin/gopgdump -config /etc/gopgdump/config.yml 1>/tmp/gopgdump.out.log 2>/tmp/gopgdump.err.log
 ```
 
