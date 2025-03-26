@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	"gopgdump/internal/common"
+
 	"gopgdump/internal/local"
 
 	"gopgdump/config"
@@ -15,6 +17,16 @@ import (
 func PurgeOldDirs() error {
 	cfg := config.Cfg()
 	if !cfg.Retention.Enable {
+		return nil
+	}
+
+	// check if a destination dir exist
+	destinationDirExists, err := common.DirExists(cfg.Dest)
+	if err != nil {
+		return err
+	}
+	// destination not exists yet, nothing to do
+	if !destinationDirExists {
 		return nil
 	}
 

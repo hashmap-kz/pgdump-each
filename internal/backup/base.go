@@ -87,7 +87,7 @@ func dumpCluster(cluster *config.PgBaseBackupCluster) error {
 	var err error
 	cfg := config.Cfg()
 
-	pgBasebackup, err := common.GetExec(cluster.Execs.PgBaseBackup, "pg_basebackup")
+	pgBasebackup, err := common.GetExec(cluster.PGBinPath, "pg_basebackup")
 	if err != nil {
 		return err
 	}
@@ -125,7 +125,7 @@ func dumpCluster(cluster *config.PgBaseBackupCluster) error {
 
 	args := []string{
 		"--dbname=" + connStrBasebackup,
-		"--pgdata=" + tmpDest,
+		"--pgdata=" + tmpDest + "/data",
 		"--checkpoint=fast",
 		"--progress",
 		"--no-password",
@@ -155,6 +155,12 @@ func dumpCluster(cluster *config.PgBaseBackupCluster) error {
 	err = os.Rename(tmpDest, okDest)
 	if err != nil {
 		return fmt.Errorf("cannot rename %s to %s, cause: %w", tmpDest, okDest, err)
+	}
+
+	// save dump logs
+	err = os.WriteFile(filepath.Join(okDest, "dump.log"), stderrBuf.Bytes(), 0o600)
+	if err != nil {
+		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
 	}
 
 	slog.Info("backup",

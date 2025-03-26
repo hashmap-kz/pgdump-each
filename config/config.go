@@ -34,16 +34,6 @@ type Config struct {
 	PrintDumpLogs bool
 }
 
-type PgDumpExecsConfig struct {
-	PgDump string `json:"pg_dump,omitempty"`
-}
-
-type PgBaseBackupExecsConfig struct {
-	PgBaseBackup     string `json:"pg_basebackup,omitempty"`
-	PgArchiveCleanup string `json:"pg_archivecleanup,omitempty"`
-	PgVerifyBackup   string `json:"pg_verifybackup,omitempty"`
-}
-
 type PgDumpsConfig struct {
 	Enable         bool
 	MaxConcurrency int
@@ -58,23 +48,23 @@ type PgBaseBackupsConfig struct {
 }
 
 type PgBaseBackupCluster struct {
-	Host     string
-	Port     int
-	Username string
-	Password string
-	Opts     map[string]string
-	Execs    PgBaseBackupExecsConfig
+	Host      string
+	Port      int
+	Username  string
+	Password  string
+	Opts      map[string]string
+	PGBinPath string
 }
 
 type PgDumpDatabase struct {
 	// postgres://username:password@host:port/dbname?connect_timeout=5&sslmode=disable
-	Host     string
-	Port     int
-	Username string
-	Password string
-	Dbname   string
-	Opts     map[string]string
-	Execs    PgDumpExecsConfig
+	Host      string
+	Port      int
+	Username  string
+	Password  string
+	Dbname    string
+	Opts      map[string]string
+	PGBinPath string
 
 	// optional filters
 	Schemas        []string

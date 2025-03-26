@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"gopgdump/internal/common"
@@ -93,7 +94,7 @@ func dumpDatabase(db *config.PgDumpDatabase) error {
 		return nil
 	}
 
-	pgDump, err := common.GetExec(db.Execs.PgDump, "pg_dump")
+	pgDump, err := common.GetExec(db.PGBinPath, "pg_dump")
 	if err != nil {
 		return err
 	}
@@ -139,7 +140,7 @@ func dumpDatabase(db *config.PgDumpDatabase) error {
 
 	args := []string{
 		"--dbname=" + connStr,
-		"--file=" + tmpDest,
+		"--file=" + tmpDest + "/data",
 		"--format=directory",
 		"--jobs=" + fmt.Sprintf("%d", jobs),
 		"--compress=1",
@@ -187,6 +188,32 @@ func dumpDatabase(db *config.PgDumpDatabase) error {
 		return fmt.Errorf("cannot rename %s to %s, cause: %w", tmpDest, okDest, err)
 	}
 
+	// save dump logs
+	err = os.WriteFile(filepath.Join(okDest, "dump.log"), stderrBuf.Bytes(), 0o600)
+	if err != nil {
+		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
+	}
+
+	// dump globals
+	pgDumpAllSQL, _, err := dumpGlobals(db.PGBinPath, connStr)
+	if err != nil {
+		slog.Warn("globals", slog.String("err-dump-globals", err.Error()))
+	}
+	err = os.WriteFile(filepath.Join(okDest, "globals.sql"), pgDumpAllSQL, 0o600)
+	if err != nil {
+		slog.Warn("globals", slog.String("err-save-globals", err.Error()))
+	}
+
+	// save restore script
+	restoreScript, err := createRestoreScript(db)
+	if err != nil {
+		slog.Warn("restore-script", slog.String("err-create-script", err.Error()))
+	}
+	err = os.WriteFile(filepath.Join(okDest, "restore.sh"), []byte(restoreScript+"\n"), 0o600)
+	if err != nil {
+		slog.Warn("restore-script", slog.String("err-save-script", err.Error()))
+	}
+
 	slog.Info("backup",
 		slog.String("status", "ok"),
 		slog.String("mode", "pg_dump"),
@@ -194,4 +221,88 @@ func dumpDatabase(db *config.PgDumpDatabase) error {
 		slog.String("path", filepath.ToSlash(okDest)),
 	)
 	return nil
+}
+
+func dumpGlobals(binPath, connStr string) (sql, logs []byte, err error) {
+	cfg := config.Cfg()
+
+	pgDumpall, err := common.GetExec(binPath, "pg_dumpall")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// yes, --verbose twice
+	// https://www.postgresql.org/docs/current/app-pgdump.html
+	// Repeating the option causes additional debug-level messages to appear on standard error.
+
+	args := []string{
+		"--dbname=" + connStr,
+		"--globals-only",
+		"--verbose",
+		"--verbose",
+	}
+
+	// pg_dumpall --globals-only
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd := exec.Command(pgDumpall, args...)
+	if cfg.PrintDumpLogs {
+		cmd.Stdout = io.MultiWriter(os.Stdout, &stdoutBuf)
+		cmd.Stderr = io.MultiWriter(os.Stderr, &stderrBuf)
+	} else {
+		cmd.Stdout = &stdoutBuf
+		cmd.Stderr = &stderrBuf
+	}
+
+	if err := cmd.Run(); err != nil {
+		return nil, nil, err
+	}
+	return stdoutBuf.Bytes(), stderrBuf.Bytes(), nil
+}
+
+func createRestoreScript(db *config.PgDumpDatabase) (string, error) {
+	template := strings.TrimSpace(`
+#!/bin/bash
+set -euo pipefail
+
+export PGHOST={{.Host}}
+export PGPORT={{.Port}}
+
+# change these placeholders with real superuser name/pass
+export PGUSER=postgres
+export PGPASSWORD=postgres
+
+# database to restore, the target
+export RESTORE_TARGET_DB={{.TargetDB}}
+export RESTORE_GLOBALS=true
+
+psql -v ON_ERROR_STOP=1 --username "${PGUSER}" <<-EOSQL
+  CREATE DATABASE ${RESTORE_TARGET_DB} encoding 'UTF8';
+EOSQL
+
+# It's okay to ignore errors while restoring global objects, as per the documentation.
+# Some roles (e.g., 'postgres') may already exist, so it's better to skip them gracefully.
+if [[ "${RESTORE_GLOBALS:-false}" = 'true' ]]; then
+  psql --username "${PGUSER}" <globals.sql
+fi
+
+# additionally, you may use '--exit-on-error' flag here
+pg_restore \
+  --dbname="${RESTORE_TARGET_DB}" \
+  --format=directory \
+  --jobs=2 \
+  --no-password \
+  --verbose data
+`)
+	data := map[string]any{
+		"Host":     db.Host,
+		"Port":     db.Port,
+		"TargetDB": db.Dbname + "_restore_" + timestamp.WorkingTimestamp,
+	}
+
+	restoreScript, err := common.ExecTemplate("pg_restore_script", template, data, map[string]any{})
+	if err != nil {
+		return "", err
+	}
+	return restoreScript, nil
 }

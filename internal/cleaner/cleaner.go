@@ -7,11 +7,25 @@ import (
 	"path/filepath"
 	"regexp"
 
+	"gopgdump/internal/common"
+
 	"gopgdump/config"
 	"gopgdump/internal/naming"
 )
 
 func DropDirtyDirs() error {
+	cfg := config.Cfg()
+
+	// check if a destination dir exist
+	destinationDirExists, err := common.DirExists(cfg.Dest)
+	if err != nil {
+		return err
+	}
+	// destination not exists yet, nothing to do
+	if !destinationDirExists {
+		return nil
+	}
+
 	dirtyDirs, err := findDirtyDirs(naming.BackupDirtyRegex)
 	if err != nil {
 		return err
