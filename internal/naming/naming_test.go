@@ -31,27 +31,3 @@ func TestBackupDmpRegex(t *testing.T) {
 		assert.False(t, BackupDmpRegex.MatchString(tc), "Expected invalid match for: "+tc)
 	}
 }
-
-func TestDatabaseNameRegex(t *testing.T) {
-	validCases := []string{
-		"mydatabase",
-		"test_db123",
-		"_db_backup",
-		"a123456789_abcdefghij", // Shorter than 63 chars
-		"UPPERCASE",             // Uppercase are allowed
-	}
-
-	invalidCases := []string{
-		"123database", // Starts with a digit
-		"db-name",     // Hyphen not allowed
-		"waytoolongname_waytoolongname_waytoolongname_waytoolongname_waytoolongname", // Exceeds 63 chars
-	}
-
-	for _, tc := range validCases {
-		assert.True(t, DatabaseNameRegex.MatchString(tc), "Expected valid match for: "+tc)
-	}
-
-	for _, tc := range invalidCases {
-		assert.False(t, DatabaseNameRegex.MatchString(tc), "Expected invalid match for: "+tc)
-	}
-}

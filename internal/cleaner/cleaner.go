@@ -34,7 +34,11 @@ func DropDirtyDirs() error {
 		slog.Info("clean", slog.String("drop-dirty", filepath.ToSlash(d)))
 		err := os.RemoveAll(d)
 		if err != nil {
-			return err
+			// print warning and continue, don't care about
+			slog.Warn("clean",
+				slog.String("drop-dirty", filepath.ToSlash(d)),
+				slog.String("err", err.Error()),
+			)
 		}
 	}
 	return nil

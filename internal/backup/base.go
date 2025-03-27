@@ -38,6 +38,11 @@ func RunPgBasebackups() []*ResultInfo {
 		go func() {
 			defer wg.Done()
 			for db := range clusterChan {
+				result := &ResultInfo{
+					Host: db.Host,
+					Port: db.Port,
+					Mode: "pg_basebackup",
+				}
 				if err := dumpCluster(db); err != nil {
 					// log errors, and continue, don't care about,
 					// the dump is performed in a tmp (*.dirty) directory
@@ -46,19 +51,9 @@ func RunPgBasebackups() []*ResultInfo {
 						slog.String("err", err.Error()),
 						slog.String("server", fmt.Sprintf("%s:%d", db.Host, db.Port)),
 					)
-					resultChan <- &ResultInfo{
-						Host: db.Host,
-						Port: db.Port,
-						Mode: "pg_basebackup",
-						Err:  err,
-					}
-				} else {
-					resultChan <- &ResultInfo{
-						Host: db.Host,
-						Port: db.Port,
-						Mode: "pg_basebackup",
-					}
+					result.Err = err
 				}
+				resultChan <- result
 			}
 		}()
 	}

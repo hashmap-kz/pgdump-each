@@ -23,9 +23,10 @@ const (
 )
 
 type Config struct {
-	Dest      string
-	Dump      PgDumpsConfig
-	Base      PgBaseBackupsConfig
+	Dest string
+	Dump PgDumpsConfig
+	Base PgBaseBackupsConfig
+
 	Retention RetentionConfig
 	Logger    LoggerConfig
 	Notify    NotifyConfig
@@ -35,9 +36,11 @@ type Config struct {
 }
 
 type PgDumpsConfig struct {
-	Enable         bool
-	MaxConcurrency int
-	Databases      []*PgDumpDatabase
+	Enable              bool
+	MaxConcurrency      int
+	DumpGlobals         bool
+	CreateRestoreScript bool
+	Databases           []*PgDumpDatabase
 }
 
 type PgBaseBackupsConfig struct {

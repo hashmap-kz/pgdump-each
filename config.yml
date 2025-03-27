@@ -7,6 +7,10 @@ dump:
   enable: true
   # how many "pg_dump" execs may be run at once, default=2
   maxConcurrency: 8
+  # execute pg_dumpall --globals-only, and save result *sql
+  dumpGlobals: false
+  # create restore.sh with all properties set, for quick restore/debug/check/migrate, etc...
+  createRestoreScript: false
   databases:
     - host: localhost
       port: 5432

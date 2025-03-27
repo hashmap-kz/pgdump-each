@@ -40,6 +40,12 @@ func RunPgDumps() []*ResultInfo {
 		go func() {
 			defer wg.Done()
 			for db := range dbChan {
+				result := &ResultInfo{
+					Host:   db.Host,
+					Port:   db.Port,
+					Dbname: db.Dbname,
+					Mode:   "pg_dump",
+				}
 				if err := dumpDatabase(db); err != nil {
 					// log errors, and continue, don't care about,
 					// the dump is performed in a tmp (*.dirty) directory
@@ -48,21 +54,9 @@ func RunPgDumps() []*ResultInfo {
 						slog.String("err", err.Error()),
 						slog.String("server", fmt.Sprintf("%s:%d/%s", db.Host, db.Port, db.Dbname)),
 					)
-					resultChan <- &ResultInfo{
-						Host:   db.Host,
-						Port:   db.Port,
-						Dbname: db.Dbname,
-						Mode:   "pg_dump",
-						Err:    err,
-					}
-				} else {
-					resultChan <- &ResultInfo{
-						Host:   db.Host,
-						Port:   db.Port,
-						Dbname: db.Dbname,
-						Mode:   "pg_dump",
-					}
+					result.Err = err
 				}
+				resultChan <- result
 			}
 		}()
 	}
@@ -188,30 +182,40 @@ func dumpDatabase(db *config.PgDumpDatabase) error {
 		return fmt.Errorf("cannot rename %s to %s, cause: %w", tmpDest, okDest, err)
 	}
 
-	// save dump logs
-	err = os.WriteFile(filepath.Join(okDest, "dump.log"), stderrBuf.Bytes(), 0o600)
-	if err != nil {
-		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
-	}
+	logFileContent := stderrBuf.Bytes()
 
 	// dump globals
-	pgDumpAllSQL, _, err := dumpGlobals(db.PGBinPath, connStr)
-	if err != nil {
-		slog.Warn("globals", slog.String("err-dump-globals", err.Error()))
-	}
-	err = os.WriteFile(filepath.Join(okDest, "globals.sql"), pgDumpAllSQL, 0o600)
-	if err != nil {
-		slog.Warn("globals", slog.String("err-save-globals", err.Error()))
+	if cfg.Dump.DumpGlobals {
+		pgDumpAllSQL, pgDumpAllLogs, err := dumpGlobals(db.PGBinPath, connStr)
+		if err != nil {
+			slog.Warn("globals", slog.String("err-dump-globals", err.Error()))
+		}
+		err = os.WriteFile(filepath.Join(okDest, "globals.sql"), pgDumpAllSQL, 0o600)
+		if err != nil {
+			slog.Warn("globals", slog.String("err-save-globals", err.Error()))
+		}
+		if len(pgDumpAllLogs) > 0 {
+			logFileContent = append(logFileContent, []byte("\n\n")...)
+			logFileContent = append(logFileContent, pgDumpAllLogs...)
+		}
 	}
 
 	// save restore script
-	restoreScript, err := createRestoreScript(db)
-	if err != nil {
-		slog.Warn("restore-script", slog.String("err-create-script", err.Error()))
+	if cfg.Dump.CreateRestoreScript {
+		restoreScript, err := createRestoreScript(db)
+		if err != nil {
+			slog.Warn("restore-script", slog.String("err-create-script", err.Error()))
+		}
+		err = os.WriteFile(filepath.Join(okDest, "restore.sh"), []byte(restoreScript+"\n"), 0o600)
+		if err != nil {
+			slog.Warn("restore-script", slog.String("err-save-script", err.Error()))
+		}
 	}
-	err = os.WriteFile(filepath.Join(okDest, "restore.sh"), []byte(restoreScript+"\n"), 0o600)
+
+	// save dump logs
+	err = os.WriteFile(filepath.Join(okDest, "dump.log"), logFileContent, 0o600)
 	if err != nil {
-		slog.Warn("restore-script", slog.String("err-save-script", err.Error()))
+		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
 	}
 
 	slog.Info("backup",
@@ -231,18 +235,12 @@ func dumpGlobals(binPath, connStr string) (sql, logs []byte, err error) {
 		return nil, nil, err
 	}
 
-	// yes, --verbose twice
-	// https://www.postgresql.org/docs/current/app-pgdump.html
-	// Repeating the option causes additional debug-level messages to appear on standard error.
-
 	args := []string{
 		"--dbname=" + connStr,
 		"--globals-only",
 		"--verbose",
-		"--verbose",
+		"--verbose", // yes, twice
 	}
-
-	// pg_dumpall --globals-only
 
 	var stdoutBuf, stderrBuf bytes.Buffer
 	cmd := exec.Command(pgDumpall, args...)
@@ -255,7 +253,7 @@ func dumpGlobals(binPath, connStr string) (sql, logs []byte, err error) {
 	}
 
 	if err := cmd.Run(); err != nil {
-		return nil, nil, err
+		return nil, stderrBuf.Bytes(), err
 	}
 	return stdoutBuf.Bytes(), stderrBuf.Bytes(), nil
 }
@@ -265,15 +263,15 @@ func createRestoreScript(db *config.PgDumpDatabase) (string, error) {
 #!/bin/bash
 set -euo pipefail
 
-export PGHOST={{.Host}}
-export PGPORT={{.Port}}
+export PGHOST='{{.Host}}'
+export PGPORT='{{.Port}}'
 
 # change these placeholders with real superuser name/pass
 export PGUSER=postgres
 export PGPASSWORD=postgres
 
 # database to restore, the target
-export RESTORE_TARGET_DB={{.TargetDB}}
+export RESTORE_TARGET_DB='{{.TargetDB}}'
 export RESTORE_GLOBALS=true
 
 psql -v ON_ERROR_STOP=1 --username "${PGUSER}" <<-EOSQL
