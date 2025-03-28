@@ -33,7 +33,7 @@ var (
 )
 
 func getDatabases(ctx context.Context) ([]string, error) {
-	conn, err := pgx.Connect(ctx, fmt.Sprintf("postgres://%s:%s/postgres", os.Getenv("PGHOST"), os.Getenv("PGPORT")))
+	conn, err := pgx.Connect(ctx, connStr)
 	if err != nil {
 		return nil, err
 	}
@@ -181,6 +181,10 @@ func runDumps(ctx context.Context) error {
 		return err
 	}
 
+	slog.Info("backup",
+		slog.String("status", "ok"),
+		slog.String("path", filepath.ToSlash(finalDir)),
+	)
 	return nil
 }
 
