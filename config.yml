@@ -1,78 +1,20 @@
-dest: "./backups"
-logDir: "" # /var/log/gopgdump
-printDumpLogs: false
+# connection settings (use PGPASSWORD env-var or .pgpass file to provide password)
+host: 10.40.240.189
+port: 5432
+username: postgres
 
-# pg_dump
-dump:
-  enable: true
-  # how many "pg_dump" execs may be run at once, default=2
-  maxConcurrency: 8
-  # execute pg_dumpall --globals-only, and save result *sql
-  dumpGlobals: false
-  # create restore.sh with all properties set, for quick restore/debug/check/migrate, etc...
-  createRestoreScript: false
-  databases:
-    - host: localhost
-      port: 5432
-      username: backup
-      password: ${PASS1}
-      dbname: bookstore
-      opts:
-        connect_timeout: "5"
-        sslmode: "disable"
+# optional: specify explicitly binaries path (otherwise $PATH variable is used to resolve binaries)
+pgBinPath: ""
+
+pgDump:
+  ignoreDatabases:
+    - logs_audit
+    - archive_2020
+  filters:
+    iam_base:
       schemas: [ ]
       excludeSchemas: [ ]
       tables: [ ]
       excludeTables: [ ]
-      # default=4
-      jobs: 8
-      # example: /usr/lib/postgresql/17/bin
-      pgBinPath: ""
+    bookstore: { }
 
-    - host: 10.40.240.189
-      port: 5432
-      username: postgres
-      password: postgres
-      dbname: keycloak_base
-      pgBinPath: "C:\\Program Files\\PostgreSQL\\17\\bin"
-
-    - host: 10.40.240.165
-      port: 30201
-      username: postgres
-      password: postgres
-      dbname: vault
-
-# pg_basebackup
-base:
-  enable: true
-  compress: true
-  # how many "pg_basebackup" execs may be run at once, default=2
-  maxConcurrency: 2
-  clusters:
-    - host: localhost
-      port: 5432
-      username: postgres
-      password: postgres
-      opts:
-        connect_timeout: "5"
-        sslmode: "disable"
-      # example: /usr/lib/postgresql/17/bin
-      pgBinPath: ""
-
-retention:
-  enable: true
-  period: 1m
-  keepLast: 1
-
-logger:
-  # text/json
-  format: text
-  # debug info warn error
-  level: debug
-
-notify:
-  enable: true
-  telegram:
-    enable: true
-    token: "${TG_BOT_TOKEN}"
-    chatId: "${TG_BOT_CHAT_ID}"
