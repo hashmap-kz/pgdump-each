@@ -19,8 +19,10 @@ import (
 const (
 	TimestampLayout = "20060102150405"
 
+	// TODO: CLI
 	dest              = "./backups"
 	printLogsToStderr = false
+	clusterName       = "local-cluster"
 )
 
 // WorkingTimestamp holds 'base working' timestamp for backup/retain tasks
@@ -108,10 +110,11 @@ func dumpCluster(ctx context.Context) error {
 func dumpDatabase(db string) error {
 	var err error
 
+	dumpDir := fmt.Sprintf("%s-%s.dmp", WorkingTimestamp, clusterName)
 	// need in case backup is failed
-	tmpDest := filepath.Join(dest, WorkingTimestamp, db+".dirty")
+	tmpDest := filepath.Join(dest, dumpDir, db+".dirty")
 	// rename to target, if everything is success
-	okDest := filepath.Join(dest, WorkingTimestamp, db+".dmp")
+	okDest := filepath.Join(dest, dumpDir, db+".dmp")
 	// prepare directory
 	err = os.MkdirAll(tmpDest, 0o755)
 	if err != nil {
