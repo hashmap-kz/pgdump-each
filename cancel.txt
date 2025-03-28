@@ -1,0 +1,70 @@
+func dumpCluster(ctx context.Context) error {
+	databases, err := getDatabases(ctx)
+	if err != nil {
+		return err
+	}
+
+	workerCount := 3
+	dbChan := make(chan string)
+	errChan := make(chan error, 1) // only need the first error
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var wg sync.WaitGroup
+
+	// Start worker goroutines
+	for i := 0; i < workerCount; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for {
+				select {
+				case <-ctx.Done():
+					return // context canceled
+				case db, ok := <-dbChan:
+					if !ok {
+						return // channel closed
+					}
+					if err := dumpDatabase(db); err != nil {
+						select {
+						case errChan <- err:
+							cancel() // signal all other workers to stop
+						default:
+							// Error already sent
+						}
+						return
+					}
+				}
+			}
+		}()
+	}
+
+	// Feed work into the dbChan
+	go func() {
+		defer close(dbChan)
+		for _, db := range databases {
+			select {
+			case <-ctx.Done():
+				return
+			case dbChan <- db:
+			}
+		}
+	}()
+
+	// Wait for all workers to finish
+	done := make(chan struct{})
+	go func() {
+		wg.Wait()
+		close(done)
+	}()
+
+	select {
+	case <-done:
+		// all workers finished successfully
+		return nil
+	case err := <-errChan:
+		// an error occurred, cancel already called
+		return err
+	}
+}
