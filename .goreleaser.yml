@@ -1,0 +1,77 @@
+version: 2
+
+before:
+  hooks:
+    - go mod download
+
+builds:
+  - id: pgdump-each
+    binary: pgdump-each
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+checksum:
+  name_template: checksums.txt
+
+archives:
+  - builds:
+      - pgdump-each
+    name_template: "{{ .ProjectName }}_{{ .Tag }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    wrap_in_directory: "false"
+    formats: [ "tar.gz" ]
+    files:
+      - LICENSE
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+
+brews:
+  - name: pgdump-each
+    repository:
+      owner: hashmap-kz
+      name: homebrew-tap
+      branch: main
+    commit_author:
+      name: alexey.zh
+      email: mailbox.stdio@gmail.com
+    homepage: https://github.com/hashmap-kz/homebrew-tap
+    description: "PostgreSQL version upgrade assistant
+    license: "Apache-2.0"
+    install: |
+      bin.install "pgdump-each"
+    test: |
+      system "#{bin}/pgdump-each"
+
+nfpms:
+  - file_name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
+    maintainer: alexey.zh
+    homepage: "https://github.com/hashmap-kz/pgdump-each"
+    description: "PostgreSQL version upgrade assistant
+    license: "Apache-2.0"
+    formats:
+      - deb
+      - rpm
+      - apk
+    bindir: /usr/bin
+    section: utils
+    contents:
+      - src: ./LICENSE
+        dst: /usr/share/doc/pgdump-each/copyright
+        file_info:
+          mode: 0644
