@@ -13,20 +13,27 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/spf13/cobra"
 )
 
 const (
 	TimestampLayout = "20060102150405"
 
 	// TODO: CLI
-	dest        = "./backups"
 	clusterName = "local-cluster"
 )
 
 // WorkingTimestamp holds 'base working' timestamp for backup/retain tasks
 // remember timestamp for all backups
 // it is easy to sort/retain when all backups in one iteration use one timestamp
-var WorkingTimestamp = time.Now().Truncate(time.Second).Format(TimestampLayout)
+var (
+	connStr   string
+	inputPath string
+	outputDir string
+
+	WorkingTimestamp = time.Now().Truncate(time.Second).Format(TimestampLayout)
+)
 
 func getDatabases(ctx context.Context) ([]string, error) {
 	conn, err := pgx.Connect(ctx, fmt.Sprintf("postgres://%s:%s/postgres", os.Getenv("PGHOST"), os.Getenv("PGPORT")))
@@ -159,8 +166,8 @@ func dumpDatabase(db, stageDir string) error {
 }
 
 func runDumps(ctx context.Context) error {
-	stageDir := filepath.Join(dest, fmt.Sprintf("%s-%s.dirty", WorkingTimestamp, clusterName))
-	finalDir := filepath.Join(dest, fmt.Sprintf("%s-%s.dmp", WorkingTimestamp, clusterName))
+	stageDir := filepath.Join(outputDir, fmt.Sprintf("%s-%s.dirty", WorkingTimestamp, clusterName))
+	finalDir := filepath.Join(outputDir, fmt.Sprintf("%s-%s.dmp", WorkingTimestamp, clusterName))
 
 	if err := os.MkdirAll(stageDir, 0o755); err != nil {
 		return err
@@ -204,16 +211,86 @@ func checkRequired() error {
 	return nil
 }
 
-func main() {
-	ctx := context.Background()
-
-	// check envs, bins
-	if err := checkRequired(); err != nil {
-		log.Fatal(err)
+func setEnvFromConnStr(connStr string) error {
+	cfg, err := pgconn.ParseConfig(connStr)
+	if err != nil {
+		return fmt.Errorf("failed to parse connStr: %w", err)
 	}
 
-	// dump cluster
-	if err := runDumps(ctx); err != nil {
+	if cfg.Host == "" || cfg.Port == 0 {
+		return fmt.Errorf("connStr: host and port are required")
+	}
+
+	_ = os.Setenv("PGHOST", cfg.Host)
+	_ = os.Setenv("PGPORT", fmt.Sprintf("%d", cfg.Port))
+
+	if cfg.User != "" {
+		_ = os.Setenv("PGUSER", cfg.User)
+	}
+	if cfg.Password != "" {
+		_ = os.Setenv("PGPASSWORD", cfg.Password)
+	}
+
+	return nil
+}
+
+func validateConnStr(ctx context.Context, connStr string) error {
+	conn, err := pgx.Connect(ctx, connStr)
+	if err != nil {
+		return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
+	}
+	defer conn.Close(ctx)
+
+	if err := conn.Ping(ctx); err != nil {
+		return fmt.Errorf("ping failed: %w", err)
+	}
+	return nil
+}
+
+func main() {
+	rootCmd := &cobra.Command{
+		Use:   "pgdump-each",
+		Short: "PostgreSQL backup and restore utility",
+	}
+
+	rootCmd.PersistentFlags().StringVar(&connStr, "connstr", "", "PostgreSQL connection string (required)")
+	rootCmd.MarkPersistentFlagRequired("connstr")
+
+	backupCmd := &cobra.Command{
+		Use:   "backup",
+		Short: "Backup all databases",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx := context.Background()
+
+			if err := setEnvFromConnStr(connStr); err != nil {
+				return err
+			}
+			if err := validateConnStr(ctx, connStr); err != nil {
+				return err
+			}
+			if err := checkRequired(); err != nil {
+				return err
+			}
+			return runDumps(ctx)
+		},
+	}
+	backupCmd.Flags().StringVar(&outputDir, "output", "./backups", "Directory to store backups")
+	backupCmd.MarkPersistentFlagRequired("output")
+
+	restoreCmd := &cobra.Command{
+		Use:   "restore",
+		Short: "Restore all databases from input",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			fmt.Println("Restore not yet implemented")
+			return nil
+		},
+	}
+	restoreCmd.Flags().StringVar(&inputPath, "input", "", "Path to backup directory (required)")
+	restoreCmd.MarkFlagRequired("input")
+
+	rootCmd.AddCommand(backupCmd, restoreCmd)
+
+	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
 }
