@@ -69,7 +69,7 @@ func getDatabases(ctx context.Context) ([]string, error) {
 func dumpCluster(ctx context.Context, stageDir string) error {
 	databases, err := getDatabases(ctx)
 	if err != nil {
-		return nil
+		return err
 	}
 
 	workerCount := 3
@@ -120,8 +120,7 @@ func dumpDatabase(db, stageDir string) error {
 	// rename to target, if everything is success
 	okDest := filepath.Join(stageDir, db+".dmp")
 	// prepare directory
-	err = os.MkdirAll(tmpDest, 0o755)
-	if err != nil {
+	if err := os.MkdirAll(tmpDest, 0o755); err != nil {
 		return fmt.Errorf("cannot create target dir %s, cause: %w", tmpDest, err)
 	}
 
@@ -172,6 +171,7 @@ func runDumps(ctx context.Context) error {
 	if err := os.MkdirAll(stageDir, 0o755); err != nil {
 		return err
 	}
+	// in case job failed, cleanup the stage
 	defer os.RemoveAll(stageDir)
 
 	// run jobs
