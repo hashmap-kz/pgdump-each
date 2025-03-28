@@ -19,9 +19,6 @@ import (
 
 const (
 	TimestampLayout = "20060102150405"
-
-	// TODO: CLI
-	clusterName = "local-cluster"
 )
 
 // WorkingTimestamp holds 'base working' timestamp for backup/retain tasks
@@ -165,8 +162,8 @@ func dumpDatabase(db, stageDir string) error {
 }
 
 func runDumps(ctx context.Context) error {
-	stageDir := filepath.Join(outputDir, fmt.Sprintf("%s-%s.dirty", WorkingTimestamp, clusterName))
-	finalDir := filepath.Join(outputDir, fmt.Sprintf("%s-%s.dmp", WorkingTimestamp, clusterName))
+	stageDir := filepath.Join(outputDir, fmt.Sprintf("%s.dirty", WorkingTimestamp))
+	finalDir := filepath.Join(outputDir, fmt.Sprintf("%s.dmp", WorkingTimestamp))
 
 	if err := os.MkdirAll(stageDir, 0o755); err != nil {
 		return err
@@ -221,14 +218,14 @@ func setEnvFromConnStr(connStr string) error {
 		return fmt.Errorf("connStr: host and port are required")
 	}
 
-	_ = os.Setenv("PGHOST", cfg.Host)
-	_ = os.Setenv("PGPORT", fmt.Sprintf("%d", cfg.Port))
+	os.Setenv("PGHOST", cfg.Host)
+	os.Setenv("PGPORT", fmt.Sprintf("%d", cfg.Port))
 
 	if cfg.User != "" {
-		_ = os.Setenv("PGUSER", cfg.User)
+		os.Setenv("PGUSER", cfg.User)
 	}
 	if cfg.Password != "" {
-		_ = os.Setenv("PGPASSWORD", cfg.Password)
+		os.Setenv("PGPASSWORD", cfg.Password)
 	}
 
 	return nil
@@ -253,13 +250,18 @@ func main() {
 		Short: "PostgreSQL backup and restore utility",
 	}
 
-	rootCmd.PersistentFlags().StringVar(&connStr, "connstr", "", "PostgreSQL connection string (required)")
-	rootCmd.MarkPersistentFlagRequired("connstr")
+	rootCmd.PersistentFlags().StringVarP(&connStr, "connstr", "c", "", `
+PostgreSQL connection string (required)
+postgres://user:pass@host:port?sslmode=disable
+`)
+	if err := rootCmd.MarkPersistentFlagRequired("connstr"); err != nil {
+		log.Fatal(err)
+	}
 
 	backupCmd := &cobra.Command{
 		Use:   "backup",
 		Short: "Backup all databases",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			ctx := context.Background()
 
 			if err := setEnvFromConnStr(connStr); err != nil {
@@ -274,19 +276,23 @@ func main() {
 			return runDumps(ctx)
 		},
 	}
-	backupCmd.Flags().StringVar(&outputDir, "output", "./backups", "Directory to store backups")
-	backupCmd.MarkPersistentFlagRequired("output")
+	backupCmd.Flags().StringVarP(&outputDir, "output", "D", "", "Directory to store backups (required)")
+	if err := backupCmd.MarkFlagRequired("output"); err != nil {
+		log.Fatal(err)
+	}
 
 	restoreCmd := &cobra.Command{
 		Use:   "restore",
 		Short: "Restore all databases from input",
-		RunE: func(cmd *cobra.Command, args []string) error {
+		RunE: func(_ *cobra.Command, _ []string) error {
 			fmt.Println("Restore not yet implemented")
 			return nil
 		},
 	}
-	restoreCmd.Flags().StringVar(&inputPath, "input", "", "Path to backup directory (required)")
-	restoreCmd.MarkFlagRequired("input")
+	restoreCmd.Flags().StringVarP(&inputPath, "input", "D", "", "Path to backup directory (required)")
+	if err := restoreCmd.MarkFlagRequired("input"); err != nil {
+		log.Fatal(err)
+	}
 
 	rootCmd.AddCommand(backupCmd, restoreCmd)
 
