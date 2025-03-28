@@ -30,6 +30,8 @@ var (
 	outputDir string
 
 	// TODO: pgBinPath to specify exactly which binaries to use during dump/restore
+	// TODO: maxConcur - how many pg_dump may be run at once
+	// TODO: --jobs parameter for each pg_dump
 
 	WorkingTimestamp = time.Now().Truncate(time.Second).Format(TimestampLayout)
 )
