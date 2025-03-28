@@ -29,6 +29,8 @@ var (
 	inputPath string
 	outputDir string
 
+	// TODO: pgBinPath to specify exactly which binaries to use during dump/restore
+
 	WorkingTimestamp = time.Now().Truncate(time.Second).Format(TimestampLayout)
 )
 
@@ -148,8 +150,10 @@ func dumpDatabase(db, stageDir string) error {
 		return fmt.Errorf("cannot rename %s to %s, cause: %w", tmpDest, okDest, err)
 	}
 
+	logFileContent := stderrBuf.Bytes()
+
 	// save dump logs
-	err = os.WriteFile(filepath.Join(okDest, "dump.log"), stderrBuf.Bytes(), 0o600)
+	err = os.WriteFile(filepath.Join(okDest, "dump.log"), logFileContent, 0o600)
 	if err != nil {
 		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
 	}
@@ -159,6 +163,36 @@ func dumpDatabase(db, stageDir string) error {
 		slog.String("path", filepath.ToSlash(okDest)),
 	)
 	return nil
+}
+
+func writeGlobalsFile(path string) error {
+	pgDumpAllSQL, _, err := dumpGlobals()
+	if err != nil {
+		return err
+	}
+	if err := os.WriteFile(filepath.Join(path, "globals.sql"), pgDumpAllSQL, 0o600); err != nil {
+		return err
+	}
+	return nil
+}
+
+func dumpGlobals() (sql, logs []byte, err error) {
+	args := []string{
+		"--dbname=" + connStr,
+		"--globals-only",
+		"--verbose",
+		"--verbose", // yes, twice
+	}
+
+	var stdoutBuf, stderrBuf bytes.Buffer
+	cmd := exec.Command("pg_dumpall", args...)
+	cmd.Stdout = &stdoutBuf
+	cmd.Stderr = &stderrBuf
+
+	if err := cmd.Run(); err != nil {
+		return nil, stderrBuf.Bytes(), err
+	}
+	return stdoutBuf.Bytes(), stderrBuf.Bytes(), nil
 }
 
 func runDumps(ctx context.Context) error {
@@ -173,6 +207,11 @@ func runDumps(ctx context.Context) error {
 
 	// run jobs
 	if err := dumpCluster(ctx, stageDir); err != nil {
+		return err
+	}
+
+	// save globals
+	if err := writeGlobalsFile(stageDir); err != nil {
 		return err
 	}
 
