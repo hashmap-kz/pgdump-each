@@ -166,6 +166,28 @@ func dumpDatabase(db string) error {
 }
 
 func main() {
+	// ensure envs
+	for _, requiredEnv := range []string{
+		"PGHOST",
+		"PGPORT",
+		"PGUSER",
+		"PGPASSWORD",
+	} {
+		if os.Getenv(requiredEnv) == "" {
+			log.Fatalf("required variable not set: %s", requiredEnv)
+		}
+	}
+
+	// ensure binaries
+	for _, requiredBin := range []string{
+		"pg_dump",
+	} {
+		if _, err := exec.LookPath(requiredBin); err != nil {
+			log.Fatalf("required binary not found: %s", requiredBin)
+		}
+	}
+
+	// dump cluster
 	ctx := context.Background()
 	if err := dumpCluster(ctx); err != nil {
 		log.Fatal(err)
