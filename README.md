@@ -3,6 +3,13 @@
 `pgdump-each` is a CLI tool designed to simplify **PostgreSQL major version upgrades** by performing safe and concurrent
 logical backups and restores of all databases in a cluster.
 
+[![License](https://img.shields.io/github/license/hashmap-kz/pgdump-each)](https://github.com/hashmap-kz/pgdump-each/blob/master/LICENSE)
+[![Go Report Card](https://goreportcard.com/badge/github.com/hashmap-kz/pgdump-each)](https://goreportcard.com/report/github.com/hashmap-kz/pgdump-each)
+[![Workflow Status](https://img.shields.io/github/actions/workflow/status/hashmap-kz/pgdump-each/ci.yml?branch=master)](https://github.com/hashmap-kz/pgdump-each/actions/workflows/ci.yml?query=branch:master)
+[![GitHub Issues](https://img.shields.io/github/issues/hashmap-kz/pgdump-each)](https://github.com/hashmap-kz/pgdump-each/issues)
+[![Go Version](https://img.shields.io/github/go-mod/go-version/hashmap-kz/pgdump-each)](https://github.com/hashmap-kz/pgdump-each/blob/master/go.mod#L3)
+[![Latest Release](https://img.shields.io/github/v/release/hashmap-kz/pgdump-each)](https://github.com/hashmap-kz/pgdump-each/releases/latest)
+
 ---
 
 ## ✨ Features
@@ -64,6 +71,23 @@ pgdump-each restore \
 - PostgreSQL client binaries in your `$PATH` (`pg_dump`, `pg_dumpall`, and soon `pg_restore`)
 - `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` — auto-inferred from `--connstr`
 - Go 1.21+ (to build from source)
+
+---
+
+## Installation
+
+### Manual Installation
+
+1. Download the latest binary for your platform from
+   the [Releases page](https://github.com/hashmap-kz/pgdump-each/releases).
+2. Place the binary in your system's `PATH` (e.g., `/usr/local/bin`).
+
+### Homebrew installation
+
+```bash
+brew tap hashmap-kz/pgdump-each
+brew install pgdump-each
+```
 
 ---
 
