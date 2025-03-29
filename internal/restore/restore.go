@@ -15,14 +15,22 @@ import (
 	"gopgdump/internal/common"
 )
 
-func RunRestoreJobs(ctx context.Context, connStr, inputPath string) error {
-	databases, err := common.GetDatabases(ctx, connStr)
+type ClusterRestoreContext struct {
+	ConnStr   string
+	InputDir  string
+	PgBinPath string
+}
+
+func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) error {
+	databases, err := common.GetDatabases(ctx, restoreContext.ConnStr)
 	if err != nil {
 		return err
 	}
 	if len(databases) > 0 {
 		return fmt.Errorf("cannot restore on non-empty cluster")
 	}
+
+	inputPath := restoreContext.InputDir
 
 	dirs, err := listTopLevelDirs(inputPath)
 	if err != nil {
@@ -36,18 +44,23 @@ func RunRestoreJobs(ctx context.Context, connStr, inputPath string) error {
 		return err
 	}
 
-	if err := restoreGlobals(connStr, inputPath); err != nil {
+	if err := restoreGlobals(restoreContext, inputPath); err != nil {
 		return err
 	}
 
-	return restoreCluster(connStr, dirs)
+	return restoreCluster(restoreContext, dirs)
 }
 
-func restoreGlobals(connStr, inputPath string) error {
+func restoreGlobals(restoreContext *ClusterRestoreContext, inputPath string) error {
+	psql, err := common.GetExec(restoreContext.PgBinPath, "psql")
+	if err != nil {
+		return err
+	}
+
 	globalsScript := filepath.Join(inputPath, "globals.sql")
 
 	args := []string{
-		"--dbname=" + connStr,
+		"--dbname=" + restoreContext.ConnStr,
 		"--file=" + globalsScript,
 	}
 
@@ -61,7 +74,7 @@ func restoreGlobals(connStr, inputPath string) error {
 
 	// execute psql
 	var stderrBuf bytes.Buffer
-	cmd := exec.Command("psql", args...)
+	cmd := exec.Command(psql, args...)
 	cmd.Stderr = &stderrBuf
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to restore globals %s: %v - %s", inputPath, err, stderrBuf.String())
@@ -74,7 +87,7 @@ func restoreGlobals(connStr, inputPath string) error {
 	return nil
 }
 
-func restoreCluster(connStr string, dirs []string) error {
+func restoreCluster(restoreContext *ClusterRestoreContext, dirs []string) error {
 	// TODO: adjust with CLI parameters (if any)
 	parallelSettings, err := common.CalculateParallelSettings(len(dirs), runtime.NumCPU())
 	if err != nil {
@@ -96,7 +109,7 @@ func restoreCluster(connStr string, dirs []string) error {
 		go func() {
 			defer wg.Done()
 			for dumpDir := range dbChan {
-				restoreErr := restoreDump(connStr, dumpDir, parallelSettings.PGDumpJobs)
+				restoreErr := restoreDump(restoreContext, dumpDir, parallelSettings.PGDumpJobs)
 				if restoreErr != nil {
 					erChan <- restoreErr
 				}
@@ -124,9 +137,14 @@ func restoreCluster(connStr string, dirs []string) error {
 	return lastErr
 }
 
-func restoreDump(connStr, dumpDir string, pgDumpJobs int) error {
+func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, pgDumpJobs int) error {
+	pgRestore, err := common.GetExec(restoreContext.PgBinPath, "pg_restore")
+	if err != nil {
+		return err
+	}
+
 	args := []string{
-		"--dbname=" + connStr,
+		"--dbname=" + restoreContext.ConnStr,
 		"--create",
 		"--exit-on-error",
 		"--format=directory",
@@ -138,7 +156,7 @@ func restoreDump(connStr, dumpDir string, pgDumpJobs int) error {
 
 	// execute dump CMD
 	var stderrBuf bytes.Buffer
-	cmd := exec.Command("pg_restore", args...)
+	cmd := exec.Command(pgRestore, args...)
 	cmd.Stderr = &stderrBuf
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to restore %s: %v - %s", dumpDir, err, stderrBuf.String())
@@ -147,7 +165,7 @@ func restoreDump(connStr, dumpDir string, pgDumpJobs int) error {
 	logFileContent := stderrBuf.Bytes()
 
 	// save dump logs
-	err := os.WriteFile(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)), logFileContent, 0o600)
+	err = os.WriteFile(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)), logFileContent, 0o600)
 	if err != nil {
 		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
 	}
