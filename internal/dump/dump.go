@@ -33,6 +33,11 @@ func RunDumpJobs(ctx context.Context, connStr, outputDir string) error {
 		return err
 	}
 
+	// save checksums
+	if err := common.WriteChecksumsFile(stageDir); err != nil {
+		return err
+	}
+
 	// ONLY if ALL backups were successfully finished, rename staging to final
 	if err := os.Rename(stageDir, finalDir); err != nil {
 		return err
