@@ -36,7 +36,7 @@ following workflow:
 ## 🧪 Backup Example
 
 ```bash
-pgdump-each backup \
+pgdump-each dump \
   --connstr "postgres://postgres:secret@old-cluster:5432/postgres?sslmode=disable" \
   --output ./backups
 ```
