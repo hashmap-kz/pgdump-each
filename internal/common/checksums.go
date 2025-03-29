@@ -75,9 +75,8 @@ func getChecksums(root string) (map[string]string, error) {
 	return checksums, nil
 }
 
-//nolint:unused
-func compareChecksums(checksumsFilePath, root string) error {
-	expected, err := scanChecksumsFromFile(checksumsFilePath)
+func CompareChecksums(root string) error {
+	expected, err := scanChecksumsFromFile(filepath.Join(root, ChecksumsFileName))
 	if err != nil {
 		return err
 	}
@@ -100,7 +99,6 @@ func compareChecksums(checksumsFilePath, root string) error {
 	return nil
 }
 
-//nolint:unused
 func scanChecksumsFromFile(checksumsFilePath string) (map[string]string, error) {
 	file, err := os.Open(checksumsFilePath)
 	if err != nil {

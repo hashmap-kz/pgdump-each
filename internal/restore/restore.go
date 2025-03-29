@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"gopgdump/internal/common"
@@ -30,6 +31,10 @@ func RunRestoreJobs(ctx context.Context, connStr, inputPath string) error {
 		return fmt.Errorf("no dumps were found")
 	}
 
+	if err := common.CompareChecksums(inputPath); err != nil {
+		return err
+	}
+
 	if err := restoreGlobals(connStr, inputPath); err != nil {
 		return err
 	}
@@ -45,6 +50,11 @@ func restoreGlobals(connStr, inputPath string) error {
 		"--file=" + globalsScript,
 	}
 
+	// It's completely fine to have errors when restoring globals.
+	// For instance: in 99.9% cases you already have role 'postgres' in your newly created cluster.
+	// And in 99.9% cases this role is also presented in globals objects for restore.
+	// According to documentation, we may freely ignore these errors.
+	//
 	// "--variable=ON_ERROR_STOP=1",
 	// "--single-transaction",
 
@@ -143,10 +153,9 @@ func listTopLevelDirs(path string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var dirs []string
 	for _, entry := range entries {
-		if entry.IsDir() {
+		if entry.IsDir() && strings.HasSuffix(entry.Name(), ".dmp") {
 			dirs = append(dirs, filepath.Join(path, entry.Name()))
 		}
 	}
