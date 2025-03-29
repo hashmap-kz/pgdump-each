@@ -50,7 +50,7 @@ This will:
 
 ---
 
-## ♻️ Restore Example (Coming Soon)
+## ♻️ Restore Example
 
 ```bash
 pgdump-each restore \
@@ -62,15 +62,12 @@ pgdump-each restore \
 - Restores globals and all database dumps concurrently using `pg_restore`
 - Logs progress and errors per database
 
-> ✅ *This command is stubbed but not yet implemented.*
-
 ---
 
 ## ✅ Requirements
 
-- PostgreSQL client binaries in your `$PATH` (`pg_dump`, `pg_dumpall`, and soon `pg_restore`)
+- PostgreSQL client binaries in your `$PATH` (`pg_dump`, `pg_dumpall`, `pg_restore`, `psql`)
 - `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` — auto-inferred from `--connstr`
-- Go 1.21+ (to build from source)
 
 ---
 
@@ -95,23 +92,9 @@ brew install pgdump-each
 
 - [x] Concurrent logical backup
 - [x] Dump global objects (`pg_dumpall --globals-only`)
-- [ ] Concurrent logical restore using `pg_restore`
+- [x] Concurrent logical restore using `pg_restore`
+- [x] Restore safety check (refuse to restore if cluster has databases)
 - [ ] Configurable parallelism (`--jobs`, `--max-concurrency`)
-- [ ] Restore safety check (refuse to restore if cluster has databases)
-
----
-
-## 🛠 Build from Source
-
-```bash
-go build -o pgdump-each ./cmd/pgdump-each
-```
-
----
-
-## 👀 Logs
-
-All logs are printed to stderr and saved as `dump.log` files inside each database’s dump directory.
 
 ---
 
