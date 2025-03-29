@@ -160,6 +160,8 @@ func dumpGlobals(connStr string) (sql, logs []byte, err error) {
 	args := []string{
 		"--dbname=" + connStr,
 		"--globals-only",
+		"--clean",
+		"--if-exists",
 		"--verbose",
 		"--verbose", // yes, twice
 	}
