@@ -33,3 +33,4 @@ avatars/
 backups/
 dist/
 cover.out
+*.log

@@ -98,7 +98,7 @@ func restoreDump(connStr, dumpDir string) error {
 	logFileContent := stderrBuf.Bytes()
 
 	// save dump logs
-	err := os.WriteFile(filepath.Base(dumpDir)+"-restore.log", logFileContent, 0o600)
+	err := os.WriteFile(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)), logFileContent, 0o600)
 	if err != nil {
 		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
 	}
