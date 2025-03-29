@@ -8,3 +8,8 @@ build:
 
 test:
 	go test -v -cover ./...
+
+# Check goreleaser
+.PHONY: snapshot
+snapshot:
+	goreleaser release --skip sign --skip publish --snapshot --clean

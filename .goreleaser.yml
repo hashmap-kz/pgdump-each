@@ -51,7 +51,7 @@ brews:
       name: alexey.zh
       email: mailbox.stdio@gmail.com
     homepage: https://github.com/hashmap-kz/homebrew-tap
-    description: "PostgreSQL version upgrade assistant
+    description: "PostgreSQL version upgrade assistant"
     license: "Apache-2.0"
     install: |
       bin.install "pgdump-each"
@@ -62,7 +62,7 @@ nfpms:
   - file_name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}"
     maintainer: alexey.zh
     homepage: "https://github.com/hashmap-kz/pgdump-each"
-    description: "PostgreSQL version upgrade assistant
+    description: "PostgreSQL version upgrade assistant"
     license: "Apache-2.0"
     formats:
       - deb

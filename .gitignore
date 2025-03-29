@@ -31,4 +31,5 @@ vendor
 avatars/
 
 backups/
+dist/
 cover.out
