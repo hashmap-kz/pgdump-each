@@ -17,7 +17,7 @@ logical backups and restores of all databases in a cluster.
 - Concurrent `pg_dump` of every non-template database in the cluster
 - Dumps are stored in `--format=directory` with compression and parallelism
 - Dumps global objects (roles, tablespaces, etc.) via `pg_dumpall --globals-only`
-- Planned: Concurrent restore via `pg_restore`
+- Concurrent restore via `pg_restore`
 - Safety: Refuses to restore if the target cluster is not empty
 
 ---
@@ -79,6 +79,22 @@ pgdump-each restore \
 1. Download the latest binary for your platform from
    the [Releases page](https://github.com/hashmap-kz/pgdump-each/releases).
 2. Place the binary in your system's `PATH` (e.g., `/usr/local/bin`).
+
+#### Example installation script for Unix-Based OS _(requirements: tar, curl, jq)_:
+
+```bash
+(
+set -euo pipefail
+
+OS="$(uname | tr '[:upper:]' '[:lower:]')"
+ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')"
+TAG="$(curl -s https://api.github.com/repos/hashmap-kz/pgdump-each/releases/latest | jq -r .tag_name)"
+
+curl -L "https://github.com/hashmap-kz/pgdump-each/releases/download/${TAG}/pgdump-each_${TAG}_${OS}_${ARCH}.tar.gz" |
+tar -xzf - -C /usr/local/bin && \
+chmod +x /usr/local/bin/pgdump-each
+)
+```
 
 ### Homebrew installation
 
