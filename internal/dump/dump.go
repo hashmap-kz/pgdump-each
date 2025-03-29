@@ -8,14 +8,21 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"gopgdump/internal/common"
 )
 
-func RunDumpJobs(ctx context.Context, connStr, outputDir string) error {
-	stageDir := filepath.Join(outputDir, fmt.Sprintf("%s.dirty", common.WorkingTimestamp))
-	finalDir := filepath.Join(outputDir, fmt.Sprintf("%s.dmp", common.WorkingTimestamp))
+type ClusterDumpContext struct {
+	ConnStr   string
+	OutputDir string
+	PgBinPath string
+}
+
+func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
+	stageDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dirty", common.WorkingTimestamp))
+	finalDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dmp", common.WorkingTimestamp))
 
 	if err := os.MkdirAll(stageDir, 0o755); err != nil {
 		return err
@@ -24,12 +31,17 @@ func RunDumpJobs(ctx context.Context, connStr, outputDir string) error {
 	defer os.RemoveAll(stageDir)
 
 	// run jobs
-	if err := dumpCluster(ctx, connStr, stageDir); err != nil {
+	if err := dumpCluster(ctx, dumpContext, stageDir); err != nil {
 		return err
 	}
 
 	// save globals
-	if err := writeGlobalsFile(connStr, stageDir); err != nil {
+	if err := writeGlobalsFile(dumpContext, stageDir); err != nil {
+		return err
+	}
+
+	// save checksums
+	if err := common.WriteChecksumsFile(stageDir); err != nil {
 		return err
 	}
 
@@ -45,13 +57,23 @@ func RunDumpJobs(ctx context.Context, connStr, outputDir string) error {
 	return nil
 }
 
-func dumpCluster(ctx context.Context, connStr, stageDir string) error {
-	databases, err := common.GetDatabases(ctx, connStr)
+func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir string) error {
+	databases, err := common.GetDatabases(ctx, dumpContext.ConnStr)
 	if err != nil {
 		return err
 	}
 
-	workerCount := 3
+	// TODO: adjust with CLI parameters (if any)
+	parallelSettings, err := common.CalculateParallelSettings(len(databases), runtime.NumCPU())
+	if err != nil {
+		return err
+	}
+	slog.Info("dump-cluster",
+		slog.Int("db-workers", parallelSettings.DBWorkers),
+		slog.Int("pgdump-jobs", parallelSettings.PGDumpJobs),
+	)
+
+	workerCount := parallelSettings.DBWorkers
 	dbChan := make(chan string, len(databases))
 	erChan := make(chan error, len(databases))
 	var wg sync.WaitGroup
@@ -62,7 +84,7 @@ func dumpCluster(ctx context.Context, connStr, stageDir string) error {
 		go func() {
 			defer wg.Done()
 			for db := range dbChan {
-				dumpErr := dumpDatabase(db, stageDir)
+				dumpErr := dumpDatabase(dumpContext, db, stageDir, parallelSettings.PGDumpJobs)
 				if dumpErr != nil {
 					erChan <- dumpErr
 				}
@@ -91,8 +113,13 @@ func dumpCluster(ctx context.Context, connStr, stageDir string) error {
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(db, stageDir string) error {
+func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, pgDumpJobs int) error {
 	var err error
+
+	pgDump, err := common.GetExec(dumpContext.PgBinPath, "pg_dump")
+	if err != nil {
+		return err
+	}
 
 	// need in case backup is failed
 	tmpDest := filepath.Join(stageDir, db+".dirty")
@@ -109,7 +136,7 @@ func dumpDatabase(db, stageDir string) error {
 		"--dbname=" + db,
 		"--file=" + tmpDest + "/data",
 		"--format=directory",
-		"--jobs=" + fmt.Sprintf("%d", 2),
+		"--jobs=" + fmt.Sprintf("%d", pgDumpJobs),
 		"--compress=1",
 		"--no-password",
 		"--verbose",
@@ -118,7 +145,7 @@ func dumpDatabase(db, stageDir string) error {
 
 	// execute dump CMD
 	var stderrBuf bytes.Buffer
-	cmd := exec.Command("pg_dump", args...)
+	cmd := exec.Command(pgDump, args...)
 	cmd.Stderr = &stderrBuf
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to dump %s: %v - %s", db, err, stderrBuf.String())
@@ -145,8 +172,8 @@ func dumpDatabase(db, stageDir string) error {
 	return nil
 }
 
-func writeGlobalsFile(connStr, path string) error {
-	pgDumpAllSQL, _, err := dumpGlobals(connStr)
+func writeGlobalsFile(dumpContext *ClusterDumpContext, path string) error {
+	pgDumpAllSQL, _, err := dumpGlobals(dumpContext.ConnStr)
 	if err != nil {
 		return err
 	}

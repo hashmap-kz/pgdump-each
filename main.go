@@ -22,10 +22,13 @@ var (
 	connStr   string
 	inputPath string
 	outputDir string
+	pgBinPath string
 
-	// TODO: pgBinPath to specify exactly which binaries to use during dump/restore
 	// TODO: maxConcur - how many pg_dump may be run at once
+	// parallelDatabases int
+
 	// TODO: --jobs parameter for each pg_dump
+	// pgDumpJobs        int
 
 )
 
@@ -113,6 +116,12 @@ func main() {
 PostgreSQL connection string (required)
 postgres://user:pass@host:port?sslmode=disable
 `)
+
+	rootCmd.PersistentFlags().StringVarP(&pgBinPath, "pgbin-path", "b", "", `
+Explicitly specify the path to PostgreSQL binaries (optional)
+/usr/lib/postgresql/17/bin
+`)
+
 	if err := rootCmd.MarkPersistentFlagRequired("connstr"); err != nil {
 		log.Fatal(err)
 	}
@@ -127,7 +136,11 @@ postgres://user:pass@host:port?sslmode=disable
 			if err := checkRoutine(ctx); err != nil {
 				return err
 			}
-			return dump.RunDumpJobs(ctx, connStr, outputDir)
+			return dump.RunDumpJobs(ctx, &dump.ClusterDumpContext{
+				ConnStr:   connStr,
+				OutputDir: outputDir,
+				PgBinPath: pgBinPath,
+			})
 		},
 	}
 	backupCmd.Flags().StringVarP(&outputDir, "output", "D", "", "Directory to store backups (required)")
@@ -145,7 +158,11 @@ postgres://user:pass@host:port?sslmode=disable
 			if err := checkRoutine(ctx); err != nil {
 				return err
 			}
-			return restore.RunRestoreJobs(ctx, connStr, inputPath)
+			return restore.RunRestoreJobs(ctx, &restore.ClusterRestoreContext{
+				ConnStr:   connStr,
+				InputDir:  inputPath,
+				PgBinPath: pgBinPath,
+			})
 		},
 	}
 	restoreCmd.Flags().StringVarP(&inputPath, "input", "D", "", "Path to backup directory (required)")
