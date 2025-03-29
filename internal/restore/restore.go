@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -88,17 +87,9 @@ func restoreGlobals(restoreContext *ClusterRestoreContext, inputPath string) err
 }
 
 func restoreCluster(restoreContext *ClusterRestoreContext, dirs []string) error {
-	// TODO: adjust with CLI parameters (if any)
-	parallelSettings, err := common.CalculateParallelSettings(len(dirs), runtime.NumCPU())
-	if err != nil {
-		return err
-	}
-	slog.Info("restore-cluster",
-		slog.Int("db-workers", parallelSettings.DBWorkers),
-		slog.Int("pgdump-jobs", parallelSettings.PGDumpJobs),
-	)
+	// TODO: jobs weights (based on dir size, or saved meta-info)
 
-	workerCount := parallelSettings.DBWorkers
+	workerCount := 2
 	dbChan := make(chan string, len(dirs))
 	erChan := make(chan error, len(dirs))
 	var wg sync.WaitGroup
@@ -109,7 +100,7 @@ func restoreCluster(restoreContext *ClusterRestoreContext, dirs []string) error 
 		go func() {
 			defer wg.Done()
 			for dumpDir := range dbChan {
-				restoreErr := restoreDump(restoreContext, dumpDir, parallelSettings.PGDumpJobs)
+				restoreErr := restoreDump(restoreContext, dumpDir, 2)
 				if restoreErr != nil {
 					erChan <- restoreErr
 				}
@@ -142,6 +133,11 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, pgDumpJo
 	if err != nil {
 		return err
 	}
+
+	slog.Info("restore-db",
+		slog.String("dump", filepath.Base(dumpDir)),
+		slog.Int("jobs", pgDumpJobs),
+	)
 
 	args := []string{
 		"--dbname=" + restoreContext.ConnStr,

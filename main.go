@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"os/exec"
 
@@ -176,4 +177,5 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
+	slog.Info("result", slog.String("status", "ok"))
 }

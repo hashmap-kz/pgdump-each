@@ -8,11 +8,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"sync"
+	"time"
 
 	"gopgdump/internal/common"
 )
+
+var workingTimestamp = time.Now().Truncate(time.Second).Format("20060102150405")
 
 type ClusterDumpContext struct {
 	ConnStr   string
@@ -21,8 +23,8 @@ type ClusterDumpContext struct {
 }
 
 func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
-	stageDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dirty", common.WorkingTimestamp))
-	finalDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dmp", common.WorkingTimestamp))
+	stageDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dirty", workingTimestamp))
+	finalDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dmp", workingTimestamp))
 
 	if err := os.MkdirAll(stageDir, 0o755); err != nil {
 		return err
@@ -50,7 +52,7 @@ func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
 		return err
 	}
 
-	slog.Info("backup",
+	slog.Info("dump-jobs",
 		slog.String("status", "ok"),
 		slog.String("path", filepath.ToSlash(finalDir)),
 	)
@@ -63,17 +65,12 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 		return err
 	}
 
-	// TODO: adjust with CLI parameters (if any)
-	parallelSettings, err := common.CalculateParallelSettings(len(databases), runtime.NumCPU())
+	jobsWeights, err := common.GetJobsWeights(ctx, dumpContext.ConnStr)
 	if err != nil {
 		return err
 	}
-	slog.Info("dump-cluster",
-		slog.Int("db-workers", parallelSettings.DBWorkers),
-		slog.Int("pgdump-jobs", parallelSettings.PGDumpJobs),
-	)
 
-	workerCount := parallelSettings.DBWorkers
+	workerCount := 2
 	dbChan := make(chan string, len(databases))
 	erChan := make(chan error, len(databases))
 	var wg sync.WaitGroup
@@ -84,7 +81,7 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 		go func() {
 			defer wg.Done()
 			for db := range dbChan {
-				dumpErr := dumpDatabase(dumpContext, db, stageDir, parallelSettings.PGDumpJobs)
+				dumpErr := dumpDatabase(dumpContext, db, stageDir, jobsWeights)
 				if dumpErr != nil {
 					erChan <- dumpErr
 				}
@@ -113,13 +110,24 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, pgDumpJobs int) error {
+func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, jobsWeights map[string]int) error {
 	var err error
 
 	pgDump, err := common.GetExec(dumpContext.PgBinPath, "pg_dump")
 	if err != nil {
 		return err
 	}
+
+	pgDumpJobs, ok := jobsWeights[db]
+	if !ok {
+		return fmt.Errorf("cannot find database name in jobs-weights table: %s", db)
+	}
+
+	slog.Info("dump-db",
+		slog.String("status", "run"),
+		slog.String("dbname", db),
+		slog.Int("jobs", pgDumpJobs),
+	)
 
 	// need in case backup is failed
 	tmpDest := filepath.Join(stageDir, db+".dirty")
@@ -165,7 +173,7 @@ func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, pgDumpJo
 		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
 	}
 
-	slog.Info("backup",
+	slog.Info("dump-db",
 		slog.String("status", "ok"),
 		slog.String("path", filepath.ToSlash(okDest)),
 	)
