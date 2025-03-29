@@ -30,9 +30,37 @@ func RunRestoreJobs(ctx context.Context, connStr, inputPath string) error {
 		return fmt.Errorf("no dumps were found")
 	}
 
-	// TODO: restore globals file
+	if err := restoreGlobals(connStr, inputPath); err != nil {
+		return err
+	}
 
 	return runRestoreJobsForDumps(connStr, dirs)
+}
+
+func restoreGlobals(connStr, inputPath string) error {
+	globalsScript := filepath.Join(inputPath, "globals.sql")
+
+	args := []string{
+		"--dbname=" + connStr,
+		"--file=" + globalsScript,
+	}
+
+	// "--variable=ON_ERROR_STOP=1",
+	// "--single-transaction",
+
+	// execute psql
+	var stderrBuf bytes.Buffer
+	cmd := exec.Command("psql", args...)
+	cmd.Stderr = &stderrBuf
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to restore globals %s: %v - %s", inputPath, err, stderrBuf.String())
+	}
+
+	slog.Info("restore",
+		slog.String("status", "ok"),
+		slog.String("globals", globalsScript),
+	)
+	return nil
 }
 
 func runRestoreJobsForDumps(connStr string, dirs []string) error {
