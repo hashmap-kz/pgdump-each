@@ -197,7 +197,7 @@ func dumpGlobals() (sql, logs []byte, err error) {
 	return stdoutBuf.Bytes(), stderrBuf.Bytes(), nil
 }
 
-func runDumps(ctx context.Context) error {
+func runBackupJobs(ctx context.Context) error {
 	stageDir := filepath.Join(outputDir, fmt.Sprintf("%s.dirty", WorkingTimestamp))
 	finalDir := filepath.Join(outputDir, fmt.Sprintf("%s.dmp", WorkingTimestamp))
 
@@ -226,6 +226,17 @@ func runDumps(ctx context.Context) error {
 		slog.String("status", "ok"),
 		slog.String("path", filepath.ToSlash(finalDir)),
 	)
+	return nil
+}
+
+func runRestoreJobs(ctx context.Context) error {
+	databases, err := getDatabases(ctx)
+	if err != nil {
+		return err
+	}
+	if len(databases) > 0 {
+		return fmt.Errorf("cannot restore on non-empty cluster")
+	}
 	return nil
 }
 
@@ -289,7 +300,22 @@ func validateConnStr(ctx context.Context, connStr string) error {
 	return nil
 }
 
+func checkRoutine(ctx context.Context) error {
+	if err := setEnvFromConnStr(connStr); err != nil {
+		return err
+	}
+	if err := validateConnStr(ctx, connStr); err != nil {
+		return err
+	}
+	if err := checkRequired(); err != nil {
+		return err
+	}
+	return nil
+}
+
 func main() {
+	// root
+
 	rootCmd := &cobra.Command{
 		Use:   "pgdump-each",
 		Short: "PostgreSQL backup and restore utility",
@@ -303,22 +329,17 @@ postgres://user:pass@host:port?sslmode=disable
 		log.Fatal(err)
 	}
 
+	// backup
+
 	backupCmd := &cobra.Command{
 		Use:   "backup",
 		Short: "Backup all databases",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			ctx := context.Background()
-
-			if err := setEnvFromConnStr(connStr); err != nil {
+			if err := checkRoutine(ctx); err != nil {
 				return err
 			}
-			if err := validateConnStr(ctx, connStr); err != nil {
-				return err
-			}
-			if err := checkRequired(); err != nil {
-				return err
-			}
-			return runDumps(ctx)
+			return runBackupJobs(ctx)
 		},
 	}
 	backupCmd.Flags().StringVarP(&outputDir, "output", "D", "", "Directory to store backups (required)")
@@ -326,12 +347,17 @@ postgres://user:pass@host:port?sslmode=disable
 		log.Fatal(err)
 	}
 
+	// restore
+
 	restoreCmd := &cobra.Command{
 		Use:   "restore",
 		Short: "Restore all databases from input",
 		RunE: func(_ *cobra.Command, _ []string) error {
-			fmt.Println("Restore not yet implemented")
-			return nil
+			ctx := context.Background()
+			if err := checkRoutine(ctx); err != nil {
+				return err
+			}
+			return runRestoreJobs(ctx)
 		},
 	}
 	restoreCmd.Flags().StringVarP(&inputPath, "input", "D", "", "Path to backup directory (required)")
@@ -339,8 +365,9 @@ postgres://user:pass@host:port?sslmode=disable
 		log.Fatal(err)
 	}
 
-	rootCmd.AddCommand(backupCmd, restoreCmd)
+	// runner
 
+	rootCmd.AddCommand(backupCmd, restoreCmd)
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
