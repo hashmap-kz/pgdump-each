@@ -35,6 +35,30 @@ func WriteChecksumsFile(stageDir string) error {
 	return nil
 }
 
+func CompareChecksums(root string) error {
+	expected, err := scanChecksumsFromFile(filepath.Join(root, ChecksumsFileName))
+	if err != nil {
+		return err
+	}
+	current, err := getChecksums(root)
+	if err != nil {
+		return err
+	}
+	if len(current) != len(expected) {
+		return fmt.Errorf("checksums directory content mismatch")
+	}
+	for k, v := range expected {
+		curVal, ok := current[k]
+		if !ok {
+			return fmt.Errorf("checksums mismatch, stray file: %s", k)
+		}
+		if v != curVal {
+			return fmt.Errorf("checksums value mismatch for file: %s", k)
+		}
+	}
+	return nil
+}
+
 func computeChecksum(filePath string, hasher hash.Hash) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -73,30 +97,6 @@ func getChecksums(root string) (map[string]string, error) {
 		return nil, err
 	}
 	return checksums, nil
-}
-
-func CompareChecksums(root string) error {
-	expected, err := scanChecksumsFromFile(filepath.Join(root, ChecksumsFileName))
-	if err != nil {
-		return err
-	}
-	current, err := getChecksums(root)
-	if err != nil {
-		return err
-	}
-	if len(current) != len(expected) {
-		return fmt.Errorf("checksums directory content mismatch")
-	}
-	for k, v := range expected {
-		curVal, ok := current[k]
-		if !ok {
-			return fmt.Errorf("checksums mismatch, stray file: %s", k)
-		}
-		if v != curVal {
-			return fmt.Errorf("checksums value mismatch for file: %s", k)
-		}
-	}
-	return nil
 }
 
 func scanChecksumsFromFile(checksumsFilePath string) (map[string]string, error) {
