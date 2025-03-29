@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"gopgdump/internal/common"
@@ -56,7 +57,17 @@ func dumpCluster(ctx context.Context, connStr, stageDir string) error {
 		return err
 	}
 
-	workerCount := 3
+	// TODO: adjust with CLI parameters (if any)
+	parallelSettings, err := common.CalculateParallelSettings(len(databases), runtime.NumCPU())
+	if err != nil {
+		return err
+	}
+	slog.Info("dump-cluster",
+		slog.Int("db-workers", parallelSettings.DBWorkers),
+		slog.Int("pgdump-jobs", parallelSettings.PGDumpJobs),
+	)
+
+	workerCount := parallelSettings.DBWorkers
 	dbChan := make(chan string, len(databases))
 	erChan := make(chan error, len(databases))
 	var wg sync.WaitGroup
@@ -67,7 +78,7 @@ func dumpCluster(ctx context.Context, connStr, stageDir string) error {
 		go func() {
 			defer wg.Done()
 			for db := range dbChan {
-				dumpErr := dumpDatabase(db, stageDir)
+				dumpErr := dumpDatabase(db, stageDir, parallelSettings.PGDumpJobs)
 				if dumpErr != nil {
 					erChan <- dumpErr
 				}
@@ -96,7 +107,7 @@ func dumpCluster(ctx context.Context, connStr, stageDir string) error {
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(db, stageDir string) error {
+func dumpDatabase(db, stageDir string, pgDumpJobs int) error {
 	var err error
 
 	// need in case backup is failed
@@ -114,7 +125,7 @@ func dumpDatabase(db, stageDir string) error {
 		"--dbname=" + db,
 		"--file=" + tmpDest + "/data",
 		"--format=directory",
-		"--jobs=" + fmt.Sprintf("%d", 2),
+		"--jobs=" + fmt.Sprintf("%d", pgDumpJobs),
 		"--compress=1",
 		"--no-password",
 		"--verbose",

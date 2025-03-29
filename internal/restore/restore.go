@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -39,7 +40,7 @@ func RunRestoreJobs(ctx context.Context, connStr, inputPath string) error {
 		return err
 	}
 
-	return runRestoreJobsForDumps(connStr, dirs)
+	return restoreCluster(connStr, dirs)
 }
 
 func restoreGlobals(connStr, inputPath string) error {
@@ -73,8 +74,18 @@ func restoreGlobals(connStr, inputPath string) error {
 	return nil
 }
 
-func runRestoreJobsForDumps(connStr string, dirs []string) error {
-	workerCount := 3
+func restoreCluster(connStr string, dirs []string) error {
+	// TODO: adjust with CLI parameters (if any)
+	parallelSettings, err := common.CalculateParallelSettings(len(dirs), runtime.NumCPU())
+	if err != nil {
+		return err
+	}
+	slog.Info("restore-cluster",
+		slog.Int("db-workers", parallelSettings.DBWorkers),
+		slog.Int("pgdump-jobs", parallelSettings.PGDumpJobs),
+	)
+
+	workerCount := parallelSettings.DBWorkers
 	dbChan := make(chan string, len(dirs))
 	erChan := make(chan error, len(dirs))
 	var wg sync.WaitGroup
@@ -85,7 +96,7 @@ func runRestoreJobsForDumps(connStr string, dirs []string) error {
 		go func() {
 			defer wg.Done()
 			for dumpDir := range dbChan {
-				restoreErr := restoreDump(connStr, dumpDir)
+				restoreErr := restoreDump(connStr, dumpDir, parallelSettings.PGDumpJobs)
 				if restoreErr != nil {
 					erChan <- restoreErr
 				}
@@ -113,13 +124,13 @@ func runRestoreJobsForDumps(connStr string, dirs []string) error {
 	return lastErr
 }
 
-func restoreDump(connStr, dumpDir string) error {
+func restoreDump(connStr, dumpDir string, pgDumpJobs int) error {
 	args := []string{
 		"--dbname=" + connStr,
 		"--create",
 		"--exit-on-error",
 		"--format=directory",
-		"--jobs=3",
+		"--jobs=" + fmt.Sprintf("%d", pgDumpJobs),
 		"--no-password",
 		"--verbose",
 		dumpDir + "/data",
