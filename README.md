@@ -47,6 +47,7 @@ This will:
 - Dump every user database concurrently using `pg_dump`
 - Dump global objects using `pg_dumpall --globals-only`
 - Ensure all dump logs are captured per-database
+- Perform all jobs in a staging directory; mark status as OK only if all succeed.
 
 ---
 
@@ -105,9 +106,11 @@ brew install pgdump-each
 ├── globals.sql
 ├── mydb1.dmp/
 │   ├── data/
+│   ├── checksums.txt
 │   └── dump.log
 ├── mydb2.dmp/
 │   ├── data/
+│   ├── checksums.txt
 │   └── dump.log
 ...
 ```
