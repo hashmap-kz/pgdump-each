@@ -19,6 +19,7 @@ logical backups and restores of all databases in a cluster.
 - Dumps global objects (roles, tablespaces, etc.) via `pg_dumpall --globals-only`
 - Concurrent restore via `pg_restore`
 - Safety: Refuses to restore if the target cluster is not empty
+- KISS: It's not reinventing the wheel - just a handy wrapper around reliable PostgreSQL tools
 
 ---
 
@@ -47,7 +48,8 @@ This will:
 - Dump every user database concurrently using `pg_dump`
 - Dump global objects using `pg_dumpall --globals-only`
 - Ensure all dump logs are captured per-database
-- Perform all jobs in a staging directory; mark status as OK only if all succeed.
+- Perform all jobs in a staging directory; mark status as OK only if all succeed
+- Record checksums for all files in the output directory
 
 ---
 
@@ -60,6 +62,7 @@ pgdump-each restore \
 ```
 
 - Validates that the target cluster is empty (no user databases)
+- Verify all files in the input directory against `checksums.txt` before restore
 - Restores globals and all database dumps concurrently using `pg_restore`
 - Logs progress and errors per database
 
@@ -102,16 +105,6 @@ chmod +x /usr/local/bin/pgdump-each
 brew tap hashmap-kz/pgdump-each
 brew install pgdump-each
 ```
-
----
-
-## 🚀 Roadmap
-
-- [x] Concurrent logical backup
-- [x] Dump global objects (`pg_dumpall --globals-only`)
-- [x] Concurrent logical restore using `pg_restore`
-- [x] Restore safety check (refuse to restore if cluster has databases)
-- [ ] Configurable parallelism (`--jobs`, `--max-concurrency`)
 
 ---
 
