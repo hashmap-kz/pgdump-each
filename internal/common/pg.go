@@ -70,7 +70,7 @@ func GetJobsWeights(ctx context.Context, dpmInfos []DBInfo, connStr string) (map
 
 	q := `
 	with db_sizes as (select datname, size_bytes
-					  from jsonb_to_recordset($1::jsonb) AS t(datname text, size_bytes int)),
+					  from jsonb_to_recordset($1::jsonb) AS t(datname text, size_bytes bigint)),
 		 totals as (select sum(size_bytes) as total_size
 					from db_sizes)
 	select d.datname as datname,
