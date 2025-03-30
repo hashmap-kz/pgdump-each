@@ -103,9 +103,10 @@ func main() {
 	// root
 
 	rootCmd := &cobra.Command{
-		Use:     "pgdump-each",
-		Short:   "PostgreSQL backup and restore utility",
-		Version: version.Version,
+		Use:          "pgdump-each",
+		Short:        "PostgreSQL backup and restore utility",
+		Version:      version.Version,
+		SilenceUsage: true,
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&connStr, "connstr", "c", "", `
