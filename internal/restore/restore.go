@@ -174,22 +174,24 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, jobsWeig
 	cmd := exec.Command(pgRestore, args...)
 	cmd.Stderr = &stderrBuf
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to restore %s: %v - %s", dumpDir, err, stderrBuf.String())
+		writeLogs(dumpDir, stderrBuf.Bytes())
+		return fmt.Errorf("failed to restore %s: %v", dumpDir, err)
 	}
 
-	logFileContent := stderrBuf.Bytes()
-
-	// save dump logs
-	err = os.WriteFile(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)), logFileContent, 0o600)
-	if err != nil {
-		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
-	}
-
+	writeLogs(dumpDir, stderrBuf.Bytes())
 	slog.Info("restore",
 		slog.String("status", "ok"),
 		slog.String("dump", filepath.ToSlash(dumpDir)),
 	)
 	return nil
+}
+
+func writeLogs(dumpDir string, logFileContent []byte) {
+	// save logs
+	err := os.WriteFile(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)), logFileContent, 0o600)
+	if err != nil {
+		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
+	}
 }
 
 func listTopLevelDirs(path string) ([]common.DBInfo, error) {
