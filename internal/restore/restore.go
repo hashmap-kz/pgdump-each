@@ -19,6 +19,7 @@ type ClusterRestoreContext struct {
 	InputDir    string
 	PgBinPath   string
 	ExitOnError bool
+	ParallelDBS int
 }
 
 func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) error {
@@ -98,7 +99,11 @@ func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, 
 		return err
 	}
 
-	workerCount := 2
+	slog.Info("restore",
+		slog.Int("workers", restoreContext.ParallelDBS),
+	)
+
+	workerCount := restoreContext.ParallelDBS
 	dbChan := make(chan string, len(dirs))
 	erChan := make(chan error, len(dirs))
 	var wg sync.WaitGroup

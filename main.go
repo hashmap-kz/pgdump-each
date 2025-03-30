@@ -17,16 +17,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// WorkingTimestamp holds 'base working' timestamp for backup/retain tasks
-// remember timestamp for all backups
-// it is easy to sort/retain when all backups in one iteration use one timestamp
 var (
-	connStr   string
-	inputPath string
-	outputDir string
-	pgBinPath string
-	exitOnErr bool
-	compress  string
+	connStr     string
+	inputPath   string
+	outputDir   string
+	pgBinPath   string
+	exitOnErr   bool
+	compress    string
+	parallelDBS int
 )
 
 func checkRequired() error {
@@ -120,6 +118,8 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 /usr/lib/postgresql/17/bin
 `)
 
+	rootCmd.PersistentFlags().IntVarP(&parallelDBS, "parallel-databases", "p", 2, "Number of concurrent dumps")
+
 	if err := rootCmd.MarkPersistentFlagRequired("connstr"); err != nil {
 		log.Fatal(err)
 	}
@@ -135,10 +135,11 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 				return err
 			}
 			return dump.RunDumpJobs(ctx, &dump.ClusterDumpContext{
-				ConnStr:   connStr,
-				OutputDir: outputDir,
-				PgBinPath: pgBinPath,
-				Compress:  compress,
+				ConnStr:     connStr,
+				OutputDir:   outputDir,
+				PgBinPath:   pgBinPath,
+				Compress:    compress,
+				ParallelDBS: parallelDBS,
 			})
 		},
 	}
@@ -163,6 +164,7 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 				InputDir:    inputPath,
 				PgBinPath:   pgBinPath,
 				ExitOnError: exitOnErr,
+				ParallelDBS: parallelDBS,
 			})
 		},
 	}
