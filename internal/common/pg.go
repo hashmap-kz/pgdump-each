@@ -57,22 +57,24 @@ func GetDatabases(ctx context.Context, connStr string) ([]DBInfo, error) {
 // Given this list of DBS, and 8 CPUs available:
 //
 // [
-//   {
-//     "datname": "audit_logs",
-//     "size_bytes": 1024
-//   },
-//   {
-//     "datname": "reports",
-//     "size_bytes": 23933411
-//   },
-//   {
-//     "datname": "online_store",
-//     "size_bytes": 13053796
-//   },
-//   {
-//     "datname": "internal_app",
-//     "size_bytes": 7877091
-//   }
+//
+//	{
+//	  "datname": "audit_logs",
+//	  "size_bytes": 1024
+//	},
+//	{
+//	  "datname": "reports",
+//	  "size_bytes": 23933411
+//	},
+//	{
+//	  "datname": "online_store",
+//	  "size_bytes": 13053796
+//	},
+//	{
+//	  "datname": "internal_app",
+//	  "size_bytes": 7877091
+//	}
+//
 // ]
 //
 // Jobs assigned:
