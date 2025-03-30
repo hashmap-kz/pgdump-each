@@ -15,9 +15,10 @@ import (
 )
 
 type ClusterRestoreContext struct {
-	ConnStr   string
-	InputDir  string
-	PgBinPath string
+	ConnStr     string
+	InputDir    string
+	PgBinPath   string
+	ExitOnError bool
 }
 
 func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) error {
@@ -158,12 +159,14 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, jobsWeig
 	args := []string{
 		"--dbname=" + restoreContext.ConnStr,
 		"--create",
-		"--exit-on-error",
 		"--format=directory",
 		"--jobs=" + fmt.Sprintf("%d", pgDumpJobs),
 		"--no-password",
 		"--verbose",
 		dumpDir + "/data",
+	}
+	if restoreContext.ExitOnError {
+		args = append(args, "--exit-on-error")
 	}
 
 	// execute dump CMD

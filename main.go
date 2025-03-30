@@ -24,13 +24,8 @@ var (
 	inputPath string
 	outputDir string
 	pgBinPath string
-
-	// TODO: maxConcur - how many pg_dump may be run at once
-	// parallelDatabases int
-
-	// TODO: --jobs parameter for each pg_dump
-	// pgDumpJobs        int
-
+	exitOnErr bool
+	compress  string
 )
 
 func checkRequired() error {
@@ -129,7 +124,7 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 
 	// backup
 
-	backupCmd := &cobra.Command{
+	dumpCmd := &cobra.Command{
 		Use:   "dump",
 		Short: "Dump all databases",
 		RunE: func(_ *cobra.Command, _ []string) error {
@@ -141,11 +136,13 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 				ConnStr:   connStr,
 				OutputDir: outputDir,
 				PgBinPath: pgBinPath,
+				Compress:  compress,
 			})
 		},
 	}
-	backupCmd.Flags().StringVarP(&outputDir, "output", "D", "", "Directory to store backups (required)")
-	if err := backupCmd.MarkFlagRequired("output"); err != nil {
+	dumpCmd.Flags().StringVarP(&outputDir, "output", "D", "", "Directory to store backups (required)")
+	dumpCmd.Flags().StringVarP(&compress, "compress", "Z", "0", "Specify the compression method and/or the compression level to use")
+	if err := dumpCmd.MarkFlagRequired("output"); err != nil {
 		log.Fatal(err)
 	}
 
@@ -160,20 +157,22 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 				return err
 			}
 			return restore.RunRestoreJobs(ctx, &restore.ClusterRestoreContext{
-				ConnStr:   connStr,
-				InputDir:  inputPath,
-				PgBinPath: pgBinPath,
+				ConnStr:     connStr,
+				InputDir:    inputPath,
+				PgBinPath:   pgBinPath,
+				ExitOnError: exitOnErr,
 			})
 		},
 	}
 	restoreCmd.Flags().StringVarP(&inputPath, "input", "D", "", "Path to backup directory (required)")
+	restoreCmd.Flags().BoolVar(&exitOnErr, "exit-on-error", true, "Exit if an error is encountered while sending SQL commands to the database")
 	if err := restoreCmd.MarkFlagRequired("input"); err != nil {
 		log.Fatal(err)
 	}
 
 	// runner
 
-	rootCmd.AddCommand(backupCmd, restoreCmd)
+	rootCmd.AddCommand(dumpCmd, restoreCmd)
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}

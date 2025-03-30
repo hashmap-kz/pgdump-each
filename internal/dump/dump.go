@@ -20,6 +20,7 @@ type ClusterDumpContext struct {
 	ConnStr   string
 	OutputDir string
 	PgBinPath string
+	Compress  string
 }
 
 func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
@@ -145,10 +146,12 @@ func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, jobsWeig
 		"--file=" + tmpDest + "/data",
 		"--format=directory",
 		"--jobs=" + fmt.Sprintf("%d", pgDumpJobs),
-		"--compress=1",
 		"--no-password",
 		"--verbose",
 		"--verbose", // yes, twice
+	}
+	if dumpContext.Compress != "" {
+		args = append(args, fmt.Sprintf("--compress=%s", dumpContext.Compress))
 	}
 
 	// execute dump CMD
