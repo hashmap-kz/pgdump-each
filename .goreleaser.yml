@@ -9,6 +9,7 @@ builds:
     binary: pgdump-each
     ldflags:
       - -s -w
+      - -X github.com/hashmap-kz/pgdump-each/internal/version.Version={{.Version}}
     env:
       - CGO_ENABLED=0
     goos:

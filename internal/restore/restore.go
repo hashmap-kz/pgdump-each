@@ -52,9 +52,7 @@ func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) 
 		return err
 	}
 
-	slog.Info("restore-jobs",
-		slog.String("status", "ok"),
-	)
+	slog.Info("result", slog.String("status", "ok"))
 	return nil
 }
 

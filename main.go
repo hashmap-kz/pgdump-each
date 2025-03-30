@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"log/slog"
 	"os"
 	"os/exec"
+
+	"gopgdump/internal/version"
 
 	"gopgdump/internal/dump"
 	"gopgdump/internal/restore"
@@ -104,8 +105,9 @@ func main() {
 	// root
 
 	rootCmd := &cobra.Command{
-		Use:   "pgdump-each",
-		Short: "PostgreSQL backup and restore utility",
+		Use:     "pgdump-each",
+		Short:   "PostgreSQL backup and restore utility",
+		Version: version.Version,
 	}
 
 	rootCmd.PersistentFlags().StringVarP(&connStr, "connstr", "c", "", `
@@ -176,5 +178,4 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
 	}
-	slog.Info("result", slog.String("status", "ok"))
 }
