@@ -93,7 +93,7 @@ func restoreGlobals(restoreContext *ClusterRestoreContext, inputPath string) err
 	return nil
 }
 
-func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, dirs []common.DBInfo) error {
+func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, dirs []*common.DBInfo) error {
 	jobsWeights, err := common.GetJobsWeights(ctx, dirs, restoreContext.ConnStr)
 	if err != nil {
 		return err
@@ -104,7 +104,7 @@ func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, 
 	)
 
 	workerCount := restoreContext.ParallelDBS
-	dbChan := make(chan string, len(dirs))
+	dbChan := make(chan *common.DBInfo, len(dirs))
 	erChan := make(chan error, len(dirs))
 	var wg sync.WaitGroup
 
@@ -124,7 +124,7 @@ func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, 
 
 	// Send databases to the pgDumpWorker channel
 	for _, db := range dirs {
-		dbChan <- db.DatName
+		dbChan <- db
 	}
 	close(dbChan) // Close the task channel once all tasks are submitted
 
@@ -142,11 +142,13 @@ func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, 
 	return lastErr
 }
 
-func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, jobsWeights map[string]int) error {
+func restoreDump(restoreContext *ClusterRestoreContext, dumpDirInfo *common.DBInfo, jobsWeights map[string]int) error {
 	pgRestore, err := common.GetExec(restoreContext.PgBinPath, "pg_restore")
 	if err != nil {
 		return err
 	}
+
+	dumpDir := dumpDirInfo.DatName
 
 	pgDumpJobs, ok := jobsWeights[dumpDir]
 	if !ok {
@@ -155,7 +157,8 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, jobsWeig
 
 	slog.Info("restore",
 		slog.String("status", "run"),
-		slog.String("dump", filepath.Base(dumpDir)),
+		slog.String("dumpname", filepath.Base(dumpDir)),
+		slog.String("dumpsize", common.ByteCountSI(dumpDirInfo.SizeBytes)),
 		slog.Int("jobs", pgDumpJobs),
 	)
 
@@ -193,13 +196,13 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, jobsWeig
 	return nil
 }
 
-func listTopLevelDirs(path string) ([]common.DBInfo, error) {
+func listTopLevelDirs(path string) ([]*common.DBInfo, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var results []common.DBInfo
+	var results []*common.DBInfo
 	for _, entry := range entries {
 		if entry.IsDir() && strings.HasSuffix(entry.Name(), ".dmp") {
 			dirPath := filepath.Join(path, entry.Name())
@@ -207,7 +210,7 @@ func listTopLevelDirs(path string) ([]common.DBInfo, error) {
 			if err != nil {
 				return nil, err
 			}
-			results = append(results, common.DBInfo{
+			results = append(results, &common.DBInfo{
 				DatName:   dirPath,
 				SizeBytes: size,
 			})

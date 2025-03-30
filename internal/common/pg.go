@@ -13,7 +13,7 @@ type DBInfo struct {
 	SizeBytes int64  `json:"size_bytes,omitempty"`
 }
 
-func GetDatabases(ctx context.Context, connStr string) ([]DBInfo, error) {
+func GetDatabases(ctx context.Context, connStr string) ([]*DBInfo, error) {
 	conn, err := pgx.Connect(ctx, connStr)
 	if err != nil {
 		return nil, err
@@ -33,7 +33,7 @@ func GetDatabases(ctx context.Context, connStr string) ([]DBInfo, error) {
 	}
 	defer rows.Close()
 
-	var scannedEntities []DBInfo
+	var scannedEntities []*DBInfo
 	for rows.Next() {
 		var scannedEntity DBInfo
 		err := rows.Scan(
@@ -43,7 +43,7 @@ func GetDatabases(ctx context.Context, connStr string) ([]DBInfo, error) {
 		if err != nil {
 			return nil, err
 		}
-		scannedEntities = append(scannedEntities, scannedEntity)
+		scannedEntities = append(scannedEntities, &scannedEntity)
 	}
 	if rows.Err() != nil {
 		return nil, rows.Err()
@@ -87,7 +87,7 @@ func GetDatabases(ctx context.Context, connStr string) ([]DBInfo, error) {
 // |internal_app|1   |
 // |audit_logs  |1   |
 // +------------+----+
-func GetJobsWeights(ctx context.Context, dpmInfos []DBInfo, connStr string) (map[string]int, error) {
+func GetJobsWeights(ctx context.Context, dpmInfos []*DBInfo, connStr string) (map[string]int, error) {
 	conn, err := pgx.Connect(ctx, connStr)
 	if err != nil {
 		return nil, err

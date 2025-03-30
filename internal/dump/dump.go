@@ -74,7 +74,7 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 	)
 
 	workerCount := dumpContext.ParallelDBS
-	dbChan := make(chan string, len(databases))
+	dbChan := make(chan *common.DBInfo, len(databases))
 	erChan := make(chan error, len(databases))
 	var wg sync.WaitGroup
 
@@ -94,7 +94,7 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 
 	// Send databases to the pgDumpWorker channel
 	for _, db := range databases {
-		dbChan <- db.DatName
+		dbChan <- db
 	}
 	close(dbChan) // Close the task channel once all tasks are submitted
 
@@ -113,8 +113,10 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, jobsWeights map[string]int) error {
+func dumpDatabase(dumpContext *ClusterDumpContext, dbInfo *common.DBInfo, stageDir string, jobsWeights map[string]int) error {
 	var err error
+
+	db := dbInfo.DatName
 
 	pgDump, err := common.GetExec(dumpContext.PgBinPath, "pg_dump")
 	if err != nil {
@@ -128,7 +130,8 @@ func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, jobsWeig
 
 	slog.Info("dump",
 		slog.String("status", "run"),
-		slog.String("dbname", db),
+		slog.String("dbname", dbInfo.DatName),
+		slog.String("dbsize", common.ByteCountSI(dbInfo.SizeBytes)),
 		slog.Int("jobs", pgDumpJobs),
 	)
 
