@@ -51,6 +51,40 @@ func GetDatabases(ctx context.Context, connStr string) ([]DBInfo, error) {
 	return scannedEntities, nil
 }
 
+// GetJobsWeights assigns --jobs for pg_dump, bases on database size and total numbers of CPU available
+// Example:
+//
+// Given this list of DBS, and 8 CPUs available:
+//
+// [
+//   {
+//     "datname": "audit_logs",
+//     "size_bytes": 1024
+//   },
+//   {
+//     "datname": "reports",
+//     "size_bytes": 23933411
+//   },
+//   {
+//     "datname": "online_store",
+//     "size_bytes": 13053796
+//   },
+//   {
+//     "datname": "internal_app",
+//     "size_bytes": 7877091
+//   }
+// ]
+//
+// Jobs assigned:
+//
+// +------------+----+
+// |datname     |jobs|
+// +------------+----+
+// |reports     |4   |
+// |online_store|2   |
+// |internal_app|1   |
+// |audit_logs  |1   |
+// +------------+----+
 func GetJobsWeights(ctx context.Context, dpmInfos []DBInfo, connStr string) (map[string]int, error) {
 	conn, err := pgx.Connect(ctx, connStr)
 	if err != nil {
