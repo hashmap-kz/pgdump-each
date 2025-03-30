@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 
@@ -16,9 +15,10 @@ import (
 )
 
 type ClusterRestoreContext struct {
-	ConnStr   string
-	InputDir  string
-	PgBinPath string
+	ConnStr     string
+	InputDir    string
+	PgBinPath   string
+	ExitOnError bool
 }
 
 func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) error {
@@ -48,7 +48,14 @@ func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) 
 		return err
 	}
 
-	return restoreCluster(restoreContext, dirs)
+	if err := restoreCluster(ctx, restoreContext, dirs); err != nil {
+		return err
+	}
+
+	slog.Info("restore-jobs",
+		slog.String("status", "ok"),
+	)
+	return nil
 }
 
 func restoreGlobals(restoreContext *ClusterRestoreContext, inputPath string) error {
@@ -82,23 +89,18 @@ func restoreGlobals(restoreContext *ClusterRestoreContext, inputPath string) err
 
 	slog.Info("restore",
 		slog.String("status", "ok"),
-		slog.String("globals", globalsScript),
+		slog.String("globals", filepath.ToSlash(globalsScript)),
 	)
 	return nil
 }
 
-func restoreCluster(restoreContext *ClusterRestoreContext, dirs []string) error {
-	// TODO: adjust with CLI parameters (if any)
-	parallelSettings, err := common.CalculateParallelSettings(len(dirs), runtime.NumCPU())
+func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, dirs []common.DBInfo) error {
+	jobsWeights, err := common.GetJobsWeights(ctx, dirs, restoreContext.ConnStr)
 	if err != nil {
 		return err
 	}
-	slog.Info("restore-cluster",
-		slog.Int("db-workers", parallelSettings.DBWorkers),
-		slog.Int("pgdump-jobs", parallelSettings.PGDumpJobs),
-	)
 
-	workerCount := parallelSettings.DBWorkers
+	workerCount := 2
 	dbChan := make(chan string, len(dirs))
 	erChan := make(chan error, len(dirs))
 	var wg sync.WaitGroup
@@ -109,7 +111,7 @@ func restoreCluster(restoreContext *ClusterRestoreContext, dirs []string) error 
 		go func() {
 			defer wg.Done()
 			for dumpDir := range dbChan {
-				restoreErr := restoreDump(restoreContext, dumpDir, parallelSettings.PGDumpJobs)
+				restoreErr := restoreDump(restoreContext, dumpDir, jobsWeights)
 				if restoreErr != nil {
 					erChan <- restoreErr
 				}
@@ -119,7 +121,7 @@ func restoreCluster(restoreContext *ClusterRestoreContext, dirs []string) error 
 
 	// Send databases to the pgDumpWorker channel
 	for _, db := range dirs {
-		dbChan <- db
+		dbChan <- db.DatName
 	}
 	close(dbChan) // Close the task channel once all tasks are submitted
 
@@ -137,21 +139,34 @@ func restoreCluster(restoreContext *ClusterRestoreContext, dirs []string) error 
 	return lastErr
 }
 
-func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, pgDumpJobs int) error {
+func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, jobsWeights map[string]int) error {
 	pgRestore, err := common.GetExec(restoreContext.PgBinPath, "pg_restore")
 	if err != nil {
 		return err
 	}
 
+	pgDumpJobs, ok := jobsWeights[dumpDir]
+	if !ok {
+		return fmt.Errorf("cannot find dump dir name in jobs-weights table: %s", dumpDir)
+	}
+
+	slog.Info("restore",
+		slog.String("status", "run"),
+		slog.String("dump", filepath.Base(dumpDir)),
+		slog.Int("jobs", pgDumpJobs),
+	)
+
 	args := []string{
 		"--dbname=" + restoreContext.ConnStr,
 		"--create",
-		"--exit-on-error",
 		"--format=directory",
 		"--jobs=" + fmt.Sprintf("%d", pgDumpJobs),
 		"--no-password",
 		"--verbose",
 		dumpDir + "/data",
+	}
+	if restoreContext.ExitOnError {
+		args = append(args, "--exit-on-error")
 	}
 
 	// execute dump CMD
@@ -159,34 +174,60 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, pgDumpJo
 	cmd := exec.Command(pgRestore, args...)
 	cmd.Stderr = &stderrBuf
 	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to restore %s: %v - %s", dumpDir, err, stderrBuf.String())
+		writeLogs(dumpDir, stderrBuf.Bytes())
+		return fmt.Errorf("failed to restore %s: %v", dumpDir, err)
 	}
 
-	logFileContent := stderrBuf.Bytes()
-
-	// save dump logs
-	err = os.WriteFile(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)), logFileContent, 0o600)
-	if err != nil {
-		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
-	}
-
+	writeLogs(dumpDir, stderrBuf.Bytes())
 	slog.Info("restore",
 		slog.String("status", "ok"),
-		slog.String("dump", dumpDir),
+		slog.String("dump", filepath.ToSlash(dumpDir)),
 	)
 	return nil
 }
 
-func listTopLevelDirs(path string) ([]string, error) {
+func writeLogs(dumpDir string, logFileContent []byte) {
+	// save logs
+	err := os.WriteFile(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)), logFileContent, 0o600)
+	if err != nil {
+		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
+	}
+}
+
+func listTopLevelDirs(path string) ([]common.DBInfo, error) {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
-	var dirs []string
+
+	var results []common.DBInfo
 	for _, entry := range entries {
 		if entry.IsDir() && strings.HasSuffix(entry.Name(), ".dmp") {
-			dirs = append(dirs, filepath.Join(path, entry.Name()))
+			dirPath := filepath.Join(path, entry.Name())
+			size, err := dirSize(dirPath)
+			if err != nil {
+				return nil, err
+			}
+			results = append(results, common.DBInfo{
+				DatName:   dirPath,
+				SizeBytes: size,
+			})
 		}
 	}
-	return dirs, nil
+	return results, nil
+}
+
+// dirSize walks a directory and returns the total size of all files
+func dirSize(path string) (int64, error) {
+	var total int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err // Can't access file
+		}
+		if !info.IsDir() {
+			total += info.Size()
+		}
+		return nil
+	})
+	return total, err
 }
