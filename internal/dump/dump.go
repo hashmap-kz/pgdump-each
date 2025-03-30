@@ -123,7 +123,7 @@ func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, jobsWeig
 		return fmt.Errorf("cannot find database name in jobs-weights table: %s", db)
 	}
 
-	slog.Info("dump-db",
+	slog.Info("dump",
 		slog.String("status", "run"),
 		slog.String("dbname", db),
 		slog.Int("jobs", pgDumpJobs),
@@ -173,7 +173,7 @@ func dumpDatabase(dumpContext *ClusterDumpContext, db, stageDir string, jobsWeig
 		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
 	}
 
-	slog.Info("dump-db",
+	slog.Info("dump",
 		slog.String("status", "ok"),
 		slog.String("path", filepath.ToSlash(okDest)),
 	)
