@@ -17,10 +17,11 @@ import (
 var workingTimestamp = time.Now().Truncate(time.Second).Format("20060102150405")
 
 type ClusterDumpContext struct {
-	ConnStr   string
-	OutputDir string
-	PgBinPath string
-	Compress  string
+	ConnStr     string
+	OutputDir   string
+	PgBinPath   string
+	Compress    string
+	ParallelDBS int
 }
 
 func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
@@ -53,10 +54,7 @@ func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
 		return err
 	}
 
-	slog.Info("dump-jobs",
-		slog.String("status", "ok"),
-		slog.String("path", filepath.ToSlash(finalDir)),
-	)
+	slog.Info("result", slog.String("status", "ok"))
 	return nil
 }
 
@@ -71,7 +69,11 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 		return err
 	}
 
-	workerCount := 2
+	slog.Info("dump",
+		slog.Int("workers", dumpContext.ParallelDBS),
+	)
+
+	workerCount := dumpContext.ParallelDBS
 	dbChan := make(chan string, len(databases))
 	erChan := make(chan error, len(databases))
 	var wg sync.WaitGroup
