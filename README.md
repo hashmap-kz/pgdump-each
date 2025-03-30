@@ -12,6 +12,12 @@ logical backups and restores of all databases in a cluster.
 
 ---
 
+### Demo: Dump cluster (version 16, port 5432) and restore on cluster (version 17, port 5433).
+
+![pgdump-each demo GIF](assets/pgdump-each-usage.gif)
+
+---
+
 ## ✨ Features
 
 - Concurrent `pg_dump` of every non-template database in the cluster
