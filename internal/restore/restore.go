@@ -172,29 +172,25 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDir string, jobsWeig
 		args = append(args, "--exit-on-error")
 	}
 
-	// execute dump CMD
-	var stderrBuf bytes.Buffer
+	// TODO: CLI parameter --log-dir (i.e. /tmp)
+	logFile, err := os.Create(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)))
+	if err != nil {
+		return fmt.Errorf("failed to create log file: %w", err)
+	}
+	defer logFile.Close()
+
+	// execute CMD
 	cmd := exec.Command(pgRestore, args...)
-	cmd.Stderr = &stderrBuf
+	cmd.Stderr = logFile // write directly to file
 	if err := cmd.Run(); err != nil {
-		writeLogs(dumpDir, stderrBuf.Bytes())
 		return fmt.Errorf("failed to restore %s: %v", dumpDir, err)
 	}
 
-	writeLogs(dumpDir, stderrBuf.Bytes())
 	slog.Info("restore",
 		slog.String("status", "ok"),
 		slog.String("dump", filepath.ToSlash(dumpDir)),
 	)
 	return nil
-}
-
-func writeLogs(dumpDir string, logFileContent []byte) {
-	// save logs
-	err := os.WriteFile(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)), logFileContent, 0o600)
-	if err != nil {
-		slog.Warn("logs", slog.String("err-save-logs", err.Error()))
-	}
 }
 
 func listTopLevelDirs(path string) ([]common.DBInfo, error) {
