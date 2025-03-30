@@ -169,7 +169,7 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 		},
 	}
 	restoreCmd.Flags().StringVarP(&inputPath, "input", "D", "", "Path to backup directory (required)")
-	restoreCmd.Flags().BoolVar(&exitOnErr, "exit-on-error", true, "Exit if an error is encountered while sending SQL commands to the database")
+	restoreCmd.Flags().BoolVarP(&exitOnErr, "exit-on-error", "e", true, "Exit if an error is encountered while sending SQL commands to the database")
 	if err := restoreCmd.MarkFlagRequired("input"); err != nil {
 		log.Fatal(err)
 	}
