@@ -65,7 +65,7 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 		return err
 	}
 
-	jobsWeights, err := common.GetJobsWeights(ctx, dumpContext.ConnStr)
+	jobsWeights, err := common.GetJobsWeights(ctx, databases, dumpContext.ConnStr)
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 
 	// Send databases to the pgDumpWorker channel
 	for _, db := range databases {
-		dbChan <- db
+		dbChan <- db.DatName
 	}
 	close(dbChan) // Close the task channel once all tasks are submitted
 

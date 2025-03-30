@@ -2,12 +2,18 @@ package common
 
 import (
 	"context"
+	"encoding/json"
 	"runtime"
 
 	"github.com/jackc/pgx/v5"
 )
 
-func GetDatabases(ctx context.Context, connStr string) ([]string, error) {
+type DBInfo struct {
+	DatName   string `json:"datname,omitempty"`
+	SizeBytes int64  `json:"size_bytes,omitempty"`
+}
+
+func GetDatabases(ctx context.Context, connStr string) ([]DBInfo, error) {
 	conn, err := pgx.Connect(ctx, connStr)
 	if err != nil {
 		return nil, err
@@ -15,30 +21,37 @@ func GetDatabases(ctx context.Context, connStr string) ([]string, error) {
 	defer conn.Close(ctx)
 
 	rows, err := conn.Query(ctx, `
-	SELECT 	datname FROM pg_database 
-	WHERE 	datistemplate = false
-	AND 	datname <> 'postgres'
+	select d.datname                   as datname,
+		   pg_database_size(d.datname) as size_bytes
+	from pg_database d
+	where d.datistemplate = false
+	  and d.datallowconn
+	  and d.datname <> 'postgres';
 	`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var databases []string
+	var scannedEntities []DBInfo
 	for rows.Next() {
-		var db string
-		if err := rows.Scan(&db); err != nil {
+		var scannedEntity DBInfo
+		err := rows.Scan(
+			&scannedEntity.DatName,
+			&scannedEntity.SizeBytes,
+		)
+		if err != nil {
 			return nil, err
 		}
-		databases = append(databases, db)
+		scannedEntities = append(scannedEntities, scannedEntity)
 	}
 	if rows.Err() != nil {
-		return nil, err
+		return nil, rows.Err()
 	}
-	return databases, nil
+	return scannedEntities, nil
 }
 
-func GetJobsWeights(ctx context.Context, connStr string) (map[string]int, error) {
+func GetJobsWeights(ctx context.Context, dpmInfos []DBInfo, connStr string) (map[string]int, error) {
 	conn, err := pgx.Connect(ctx, connStr)
 	if err != nil {
 		return nil, err
@@ -50,23 +63,25 @@ func GetJobsWeights(ctx context.Context, connStr string) (map[string]int, error)
 		totalJobs = 1
 	}
 
+	jsonData, err := json.Marshal(dpmInfos)
+	if err != nil {
+		return nil, err
+	}
+
 	q := `
-	with db_sizes as (select datname,
-							 pg_database_size(datname) as size_bytes
-					  from pg_database
-					  where datistemplate = false
-						and datname <> 'postgres'),
+	with db_sizes as (select datname, size_bytes
+					  from jsonb_to_recordset($1::jsonb) AS t(datname text, size_bytes int)),
 		 totals as (select sum(size_bytes) as total_size
 					from db_sizes)
 	select d.datname as datname,
 		   greatest(1,
-					round(d.size_bytes::numeric / t.total_size * $1)
+					round(d.size_bytes::numeric / t.total_size * $2)
 		   )::int as jobs
 	from db_sizes d,
 		 totals t
 	order by d.size_bytes desc
 `
-	rows, err := conn.Query(ctx, q, totalJobs)
+	rows, err := conn.Query(ctx, q, jsonData, totalJobs)
 	if err != nil {
 		return nil, err
 	}
