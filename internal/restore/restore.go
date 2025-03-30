@@ -11,7 +11,7 @@ import (
 	"strings"
 	"sync"
 
-	"gopgdump/internal/common"
+	"github.com/hashmap-kz/pgdump-each/internal/common"
 )
 
 type ClusterRestoreContext struct {

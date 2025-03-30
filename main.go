@@ -7,10 +7,9 @@ import (
 	"os"
 	"os/exec"
 
-	"gopgdump/internal/version"
-
-	"gopgdump/internal/dump"
-	"gopgdump/internal/restore"
+	"github.com/hashmap-kz/pgdump-each/internal/dump"
+	"github.com/hashmap-kz/pgdump-each/internal/restore"
+	"github.com/hashmap-kz/pgdump-each/internal/version"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"

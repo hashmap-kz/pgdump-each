@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"gopgdump/internal/common"
+	"github.com/hashmap-kz/pgdump-each/internal/common"
 )
 
 var workingTimestamp = time.Now().Truncate(time.Second).Format("20060102150405")
