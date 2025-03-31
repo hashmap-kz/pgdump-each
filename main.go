@@ -2,101 +2,26 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"os"
-	"os/exec"
 
+	"github.com/hashmap-kz/pgdump-each/internal/common"
 	"github.com/hashmap-kz/pgdump-each/internal/dump"
 	"github.com/hashmap-kz/pgdump-each/internal/restore"
 	"github.com/hashmap-kz/pgdump-each/internal/version"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/spf13/cobra"
 )
 
 var (
-	connStr     string
-	inputPath   string
-	outputDir   string
-	pgBinPath   string
-	exitOnErr   bool
-	compress    string
-	parallelDBS int
+	connStr       string
+	inputPath     string
+	outputDir     string
+	pgBinPath     string
+	exitOnErr     bool
+	compress      string
+	parallelDBS   int
+	restoreLogDir string
 )
-
-func checkRequired() error {
-	// ensure envs
-	for _, requiredEnv := range []string{
-		"PGHOST",
-		"PGPORT",
-		"PGUSER",
-		"PGPASSWORD",
-	} {
-		if os.Getenv(requiredEnv) == "" {
-			return fmt.Errorf("required variable not set: %s", requiredEnv)
-		}
-	}
-
-	// ensure binaries
-	for _, requiredBin := range []string{
-		"pg_dump",
-	} {
-		if _, err := exec.LookPath(requiredBin); err != nil {
-			return fmt.Errorf("required binary not found: %s", requiredBin)
-		}
-	}
-	return nil
-}
-
-func setEnvFromConnStr(connStr string) error {
-	cfg, err := pgconn.ParseConfig(connStr)
-	if err != nil {
-		return fmt.Errorf("failed to parse connStr: %w", err)
-	}
-
-	if cfg.Host == "" || cfg.Port == 0 {
-		return fmt.Errorf("connStr: host and port are required")
-	}
-
-	os.Setenv("PGHOST", cfg.Host)
-	os.Setenv("PGPORT", fmt.Sprintf("%d", cfg.Port))
-
-	if cfg.User != "" {
-		os.Setenv("PGUSER", cfg.User)
-	}
-	if cfg.Password != "" {
-		os.Setenv("PGPASSWORD", cfg.Password)
-	}
-
-	return nil
-}
-
-func validateConnStr(ctx context.Context, connStr string) error {
-	conn, err := pgx.Connect(ctx, connStr)
-	if err != nil {
-		return fmt.Errorf("failed to connect to PostgreSQL: %w", err)
-	}
-	defer conn.Close(ctx)
-	if err := conn.Ping(ctx); err != nil {
-		return fmt.Errorf("ping failed: %w", err)
-	}
-	return nil
-}
-
-func checkRoutine(ctx context.Context) error {
-	if err := setEnvFromConnStr(connStr); err != nil {
-		return err
-	}
-	if err := validateConnStr(ctx, connStr); err != nil {
-		return err
-	}
-	if err := checkRequired(); err != nil {
-		return err
-	}
-	return nil
-}
 
 func main() {
 	// root
@@ -131,7 +56,7 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 		Short: "Dump all databases",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			if err := checkRoutine(ctx); err != nil {
+			if err := common.SetupEnv(ctx, connStr); err != nil {
 				return err
 			}
 			return dump.RunDumpJobs(ctx, &dump.ClusterDumpContext{
@@ -156,7 +81,7 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 		Short: "Restore all databases from input",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			if err := checkRoutine(ctx); err != nil {
+			if err := common.SetupEnv(ctx, connStr); err != nil {
 				return err
 			}
 			return restore.RunRestoreJobs(ctx, &restore.ClusterRestoreContext{
@@ -165,11 +90,13 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 				PgBinPath:   pgBinPath,
 				ExitOnError: exitOnErr,
 				ParallelDBS: parallelDBS,
+				LogDir:      restoreLogDir,
 			})
 		},
 	}
 	restoreCmd.Flags().StringVarP(&inputPath, "input", "D", "", "Path to backup directory (required)")
 	restoreCmd.Flags().BoolVarP(&exitOnErr, "exit-on-error", "e", true, "Exit if an error is encountered while sending SQL commands to the database")
+	restoreCmd.Flags().StringVar(&restoreLogDir, "log-dir", "", "Specify where to save restore logs (i.e. /tmp)")
 	if err := restoreCmd.MarkFlagRequired("input"); err != nil {
 		log.Fatal(err)
 	}

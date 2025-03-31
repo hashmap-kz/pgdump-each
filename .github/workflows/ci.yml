@@ -22,6 +22,16 @@ jobs:
       - name: Run unit tests
         run: make test
 
+      - name: install postgresql 17 client tools
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y postgresql-common
+          sudo YES=true /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh
+          sudo apt-get install -y postgresql-client-17
+
+      - name: Run integration tests
+        run: make test-integration
+
       # - name: Run GoReleaser
       #   uses: goreleaser/goreleaser-action@v6
       #   with:

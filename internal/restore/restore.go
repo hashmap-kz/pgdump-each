@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/hashmap-kz/pgdump-each/internal/common"
@@ -20,9 +19,14 @@ type ClusterRestoreContext struct {
 	PgBinPath   string
 	ExitOnError bool
 	ParallelDBS int
+	LogDir      string
 }
 
 func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) error {
+	if err := common.SetupEnv(ctx, restoreContext.ConnStr); err != nil {
+		return err
+	}
+
 	databases, err := common.GetDatabases(ctx, restoreContext.ConnStr)
 	if err != nil {
 		return err
@@ -33,7 +37,7 @@ func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) 
 
 	inputPath := restoreContext.InputDir
 
-	dirs, err := listTopLevelDirs(inputPath)
+	dirs, err := common.GetDumpsInDir(inputPath)
 	if err != nil {
 		return err
 	}
@@ -175,8 +179,9 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDirInfo *common.DBIn
 		args = append(args, "--exit-on-error")
 	}
 
-	// TODO: CLI parameter --log-dir (i.e. /tmp)
-	logFile, err := os.Create(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)))
+	// preserve logs for debug
+	logFileName := fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir))
+	logFile, err := os.Create(filepath.Join(restoreContext.LogDir, logFileName))
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
 	}
@@ -194,42 +199,4 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDirInfo *common.DBIn
 		slog.String("dump", filepath.ToSlash(dumpDir)),
 	)
 	return nil
-}
-
-func listTopLevelDirs(path string) ([]*common.DBInfo, error) {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*common.DBInfo
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasSuffix(entry.Name(), ".dmp") {
-			dirPath := filepath.Join(path, entry.Name())
-			size, err := dirSize(dirPath)
-			if err != nil {
-				return nil, err
-			}
-			results = append(results, &common.DBInfo{
-				DatName:   dirPath,
-				SizeBytes: size,
-			})
-		}
-	}
-	return results, nil
-}
-
-// dirSize walks a directory and returns the total size of all files
-func dirSize(path string) (int64, error) {
-	var total int64
-	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err // Can't access file
-		}
-		if !info.IsDir() {
-			total += info.Size()
-		}
-		return nil
-	})
-	return total, err
 }
