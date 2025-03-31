@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/hashmap-kz/pgdump-each/internal/common"
@@ -37,7 +36,7 @@ func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) 
 
 	inputPath := restoreContext.InputDir
 
-	dirs, err := listTopLevelDirs(inputPath)
+	dirs, err := common.GetDumpsInDir(inputPath)
 	if err != nil {
 		return err
 	}
@@ -198,42 +197,4 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDirInfo *common.DBIn
 		slog.String("dump", filepath.ToSlash(dumpDir)),
 	)
 	return nil
-}
-
-func listTopLevelDirs(path string) ([]*common.DBInfo, error) {
-	entries, err := os.ReadDir(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*common.DBInfo
-	for _, entry := range entries {
-		if entry.IsDir() && strings.HasSuffix(entry.Name(), ".dmp") {
-			dirPath := filepath.Join(path, entry.Name())
-			size, err := dirSize(dirPath)
-			if err != nil {
-				return nil, err
-			}
-			results = append(results, &common.DBInfo{
-				DatName:   dirPath,
-				SizeBytes: size,
-			})
-		}
-	}
-	return results, nil
-}
-
-// dirSize walks a directory and returns the total size of all files
-func dirSize(path string) (int64, error) {
-	var total int64
-	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err // Can't access file
-		}
-		if !info.IsDir() {
-			total += info.Size()
-		}
-		return nil
-	})
-	return total, err
 }

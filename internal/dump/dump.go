@@ -14,6 +14,8 @@ import (
 	"github.com/hashmap-kz/pgdump-each/internal/common"
 )
 
+const GlobalsFileName = "globals.sql"
+
 var WorkingTimestamp = time.Now().Truncate(time.Second).Format("20060102150405")
 
 type ClusterDumpContext struct {
@@ -193,19 +195,24 @@ func dumpDatabase(dumpContext *ClusterDumpContext, dbInfo *common.DBInfo, stageD
 }
 
 func writeGlobalsFile(dumpContext *ClusterDumpContext, path string) error {
-	pgDumpAllSQL, _, err := dumpGlobals(dumpContext.ConnStr)
+	pgDumpAllSQL, _, err := dumpGlobals(dumpContext)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(path, "globals.sql"), pgDumpAllSQL, 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(path, GlobalsFileName), pgDumpAllSQL, 0o600); err != nil {
 		return err
 	}
 	return nil
 }
 
-func dumpGlobals(connStr string) (sql, logs []byte, err error) {
+func dumpGlobals(dumpContext *ClusterDumpContext) (sql, logs []byte, err error) {
+	pgDumpall, err := common.GetExec(dumpContext.PgBinPath, "pg_dumpall")
+	if err != nil {
+		return nil, nil, err
+	}
+
 	args := []string{
-		"--dbname=" + connStr,
+		"--dbname=" + dumpContext.ConnStr,
 		"--globals-only",
 		"--clean",
 		"--if-exists",
@@ -214,7 +221,7 @@ func dumpGlobals(connStr string) (sql, logs []byte, err error) {
 	}
 
 	var stdoutBuf, stderrBuf bytes.Buffer
-	cmd := exec.Command("pg_dumpall", args...)
+	cmd := exec.Command(pgDumpall, args...)
 	cmd.Stdout = &stdoutBuf
 	cmd.Stderr = &stderrBuf
 
