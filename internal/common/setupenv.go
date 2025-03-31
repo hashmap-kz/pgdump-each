@@ -12,7 +12,10 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-const DefaultConnWaitTimeout = 30 * time.Second
+const (
+	DefaultConnWaitTimeout       = 30 * time.Second
+	DefaultConnSleepWhileWaiting = 5 * time.Second
+)
 
 func SetupEnv(_ context.Context, connStr string) error {
 	if err := validateConnStr(connStr); err != nil {
@@ -96,7 +99,7 @@ func validateConnStr(connStr string) error {
 			return fmt.Errorf("PostgreSQL not ready after %s: %w", DefaultConnWaitTimeout, err)
 		}
 
-		slog.Info("pg_isready", slog.Any("err", err))
-		time.Sleep(1 * time.Second)
+		slog.Info("pg_isready", slog.String("status", "waiting"))
+		time.Sleep(DefaultConnSleepWhileWaiting)
 	}
 }
