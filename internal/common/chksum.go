@@ -27,7 +27,7 @@ func WriteChecksumsFile(stageDir string) error {
 	}
 
 	for k, v := range checksums {
-		_, err := f.WriteString(fmt.Sprintf("%s  %s\n", v, k))
+		_, err := fmt.Fprintf(f, "%s  %s\n", v, k)
 		if err != nil {
 			return err
 		}
