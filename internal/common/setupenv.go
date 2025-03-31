@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
+	"sync"
 	"time"
 
 	"github.com/jackc/pgconn"
@@ -20,17 +21,27 @@ const (
 	IntegrationTestFlag = "0xcafebabe"
 )
 
+var (
+	setupOnce sync.Once
+	setupErr  error
+)
+
 func SetupEnv(_ context.Context, connStr string) error {
-	if err := validateConnStr(connStr); err != nil {
-		return err
-	}
-	if err := setEnvFromConnStr(connStr); err != nil {
-		return err
-	}
-	if err := checkRequired(); err != nil {
-		return err
-	}
-	return nil
+	setupOnce.Do(func() {
+		if err := validateConnStr(connStr); err != nil {
+			setupErr = err
+			return
+		}
+		if err := setEnvFromConnStr(connStr); err != nil {
+			setupErr = err
+			return
+		}
+		if err := checkRequired(); err != nil {
+			setupErr = err
+			return
+		}
+	})
+	return setupErr
 }
 
 func checkRequired() error {
