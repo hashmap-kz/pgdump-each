@@ -19,6 +19,7 @@ type ClusterRestoreContext struct {
 	PgBinPath   string
 	ExitOnError bool
 	ParallelDBS int
+	LogDir      string
 }
 
 func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) error {
@@ -178,8 +179,9 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDirInfo *common.DBIn
 		args = append(args, "--exit-on-error")
 	}
 
-	// TODO: CLI parameter --log-dir (i.e. /tmp)
-	logFile, err := os.Create(fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir)))
+	// preserve logs for debug
+	logFileName := fmt.Sprintf("restore-%s.log", filepath.Base(dumpDir))
+	logFile, err := os.Create(filepath.Join(restoreContext.LogDir, logFileName))
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
 	}

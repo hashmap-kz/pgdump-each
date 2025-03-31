@@ -42,6 +42,7 @@ func TestRestoreStage(t *testing.T) {
 		ConnStr:     "postgres://postgres:postgres@localhost:15433/postgres",
 		InputDir:    expectedPath,
 		ParallelDBS: 5,
+		LogDir:      "/tmp",
 	})
 
 	assert.NoError(t, err)

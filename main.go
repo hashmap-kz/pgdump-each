@@ -13,13 +13,14 @@ import (
 )
 
 var (
-	connStr     string
-	inputPath   string
-	outputDir   string
-	pgBinPath   string
-	exitOnErr   bool
-	compress    string
-	parallelDBS int
+	connStr       string
+	inputPath     string
+	outputDir     string
+	pgBinPath     string
+	exitOnErr     bool
+	compress      string
+	parallelDBS   int
+	restoreLogDir string
 )
 
 func main() {
@@ -89,11 +90,13 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 				PgBinPath:   pgBinPath,
 				ExitOnError: exitOnErr,
 				ParallelDBS: parallelDBS,
+				LogDir:      restoreLogDir,
 			})
 		},
 	}
 	restoreCmd.Flags().StringVarP(&inputPath, "input", "D", "", "Path to backup directory (required)")
 	restoreCmd.Flags().BoolVarP(&exitOnErr, "exit-on-error", "e", true, "Exit if an error is encountered while sending SQL commands to the database")
+	restoreCmd.Flags().StringVar(&restoreLogDir, "log-dir", "", "Specify where to save restore logs (i.e. /tmp)")
 	if err := restoreCmd.MarkFlagRequired("input"); err != nil {
 		log.Fatal(err)
 	}
