@@ -60,7 +60,10 @@ func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
 		return err
 	}
 
-	slog.Info("result", slog.String("status", "ok"))
+	slog.Info("result",
+		slog.String("status", "ok"),
+		slog.String("path", filepath.ToSlash(finalDir)),
+	)
 	return nil
 }
 
