@@ -14,7 +14,7 @@ import (
 	"github.com/hashmap-kz/pgdump-each/internal/common"
 )
 
-var workingTimestamp = time.Now().Truncate(time.Second).Format("20060102150405")
+var WorkingTimestamp = time.Now().Truncate(time.Second).Format("20060102150405")
 
 type ClusterDumpContext struct {
 	ConnStr     string
@@ -25,8 +25,8 @@ type ClusterDumpContext struct {
 }
 
 func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
-	stageDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dirty", workingTimestamp))
-	finalDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dmp", workingTimestamp))
+	stageDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dirty", WorkingTimestamp))
+	finalDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dmp", WorkingTimestamp))
 
 	if err := os.MkdirAll(stageDir, 0o755); err != nil {
 		return err
