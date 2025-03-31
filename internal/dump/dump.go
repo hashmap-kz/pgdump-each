@@ -25,6 +25,10 @@ type ClusterDumpContext struct {
 }
 
 func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
+	if err := common.SetupEnv(ctx, dumpContext.ConnStr); err != nil {
+		return err
+	}
+
 	stageDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dirty", WorkingTimestamp))
 	finalDir := filepath.Join(dumpContext.OutputDir, fmt.Sprintf("%s.dmp", WorkingTimestamp))
 

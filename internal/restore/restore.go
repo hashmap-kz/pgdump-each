@@ -23,6 +23,10 @@ type ClusterRestoreContext struct {
 }
 
 func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) error {
+	if err := common.SetupEnv(ctx, restoreContext.ConnStr); err != nil {
+		return err
+	}
+
 	databases, err := common.GetDatabases(ctx, restoreContext.ConnStr)
 	if err != nil {
 		return err
