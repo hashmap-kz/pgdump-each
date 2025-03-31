@@ -15,6 +15,9 @@ import (
 const (
 	DefaultConnWaitTimeout       = 30 * time.Second
 	DefaultConnSleepWhileWaiting = 5 * time.Second
+
+	IntegrationTestEnv  = "PGDUMP_EACH_INTEGRATION_TESTS_AVAILABLE"
+	IntegrationTestFlag = "0xcafebabe"
 )
 
 func SetupEnv(_ context.Context, connStr string) error {

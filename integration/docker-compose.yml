@@ -27,9 +27,7 @@ services:
       - "15433:5432"
     volumes:
       - pgdata17:/var/lib/postgresql/data
-      - ./initdb:/docker-entrypoint-initdb.d:ro
 
 volumes:
   pgdata16:
   pgdata17:
-

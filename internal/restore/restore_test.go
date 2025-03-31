@@ -1,4 +1,4 @@
-package dump
+package restore
 
 import (
 	"context"
@@ -8,10 +8,11 @@ import (
 	"testing"
 
 	"github.com/hashmap-kz/pgdump-each/internal/common"
+	"github.com/hashmap-kz/pgdump-each/internal/dump"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDumpStage(t *testing.T) {
+func TestRestoreStage(t *testing.T) {
 	if os.Getenv(common.IntegrationTestEnv) != common.IntegrationTestFlag {
 		t.Log("integration test was skipped due to configuration")
 		return
@@ -21,7 +22,7 @@ func TestDumpStage(t *testing.T) {
 
 	// perform dump
 
-	err := RunDumpJobs(context.Background(), &ClusterDumpContext{
+	err := dump.RunDumpJobs(context.Background(), &dump.ClusterDumpContext{
 		ConnStr:     "postgres://postgres:postgres@localhost:15432/postgres",
 		OutputDir:   outputDir,
 		ParallelDBS: 3,
@@ -30,20 +31,18 @@ func TestDumpStage(t *testing.T) {
 
 	// check expected output content
 
-	expectedPath := filepath.Join(outputDir, fmt.Sprintf("%s.dmp", WorkingTimestamp))
+	expectedPath := filepath.Join(outputDir, fmt.Sprintf("%s.dmp", dump.WorkingTimestamp))
 	dumps, err := common.GetDumpsInDir(expectedPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(dumps))
 
-	// expecting checksums and globals
+	// trying to restore
 
-	expectedFiles := []string{
-		common.ChecksumsFileName,
-		GlobalsFileName,
-	}
-	for _, expFile := range expectedFiles {
-		path := filepath.Join(expectedPath, expFile)
-		_, err = os.Stat(path)
-		assert.NoError(t, err, "expected file to exist: %s", path)
-	}
+	err = RunRestoreJobs(context.Background(), &ClusterRestoreContext{
+		ConnStr:     "postgres://postgres:postgres@localhost:15433/postgres",
+		InputDir:    expectedPath,
+		ParallelDBS: 5,
+	})
+
+	assert.NoError(t, err)
 }

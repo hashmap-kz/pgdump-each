@@ -24,7 +24,7 @@ compose-setup:
 # Cleanup docker-compose
 .PHONY: compose-teardown
 compose-teardown:
-	docker compose -f integration/docker-compose.yml down
+	docker compose -f integration/docker-compose.yml down -v
 
 # Run integration tests
 .PHONY: test-integration
