@@ -7,13 +7,13 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hashmap-kz/pgdump-each/internal/common"
 	"github.com/hashmap-kz/pgdump-each/internal/dump"
+	"github.com/hashmap-kz/pgdump-each/internal/xutil"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestRestoreStage(t *testing.T) {
-	if os.Getenv(common.IntegrationTestEnv) != common.IntegrationTestFlag {
+	if os.Getenv(xutil.IntegrationTestEnv) != xutil.IntegrationTestFlag {
 		t.Log("integration test was skipped due to configuration")
 		return
 	}
@@ -32,7 +32,7 @@ func TestRestoreStage(t *testing.T) {
 	// check expected output content
 
 	expectedPath := filepath.Join(outputDir, fmt.Sprintf("%s.dmp", dump.WorkingTimestamp))
-	dumps, err := common.GetDumpsInDir(expectedPath)
+	dumps, err := xutil.GetDumpsInDir(expectedPath)
 	assert.NoError(t, err)
 	assert.Equal(t, 7, len(dumps))
 

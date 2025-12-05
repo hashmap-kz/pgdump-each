@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hashmap-kz/pgdump-each/internal/common"
+	"github.com/hashmap-kz/pgdump-each/internal/xutil"
 )
 
 const GlobalsFileName = "globals.sql"
@@ -27,7 +27,7 @@ type ClusterDumpContext struct {
 }
 
 func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
-	if err := common.SetupEnv(ctx, dumpContext.ConnStr); err != nil {
+	if err := xutil.SetupEnv(ctx, dumpContext.ConnStr); err != nil {
 		return err
 	}
 
@@ -51,7 +51,7 @@ func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
 	}
 
 	// save checksums
-	if err := common.WriteChecksumsFile(stageDir); err != nil {
+	if err := xutil.WriteChecksumsFile(stageDir); err != nil {
 		return err
 	}
 
@@ -68,12 +68,12 @@ func RunDumpJobs(ctx context.Context, dumpContext *ClusterDumpContext) error {
 }
 
 func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir string) error {
-	databases, err := common.GetDatabases(ctx, dumpContext.ConnStr)
+	databases, err := xutil.GetDatabases(ctx, dumpContext.ConnStr)
 	if err != nil {
 		return err
 	}
 
-	jobsWeights, err := common.GetJobsWeights(ctx, databases, dumpContext.ConnStr)
+	jobsWeights, err := xutil.GetJobsWeights(ctx, databases, dumpContext.ConnStr)
 	if err != nil {
 		return err
 	}
@@ -83,7 +83,7 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 	)
 
 	workerCount := dumpContext.ParallelDBS
-	dbChan := make(chan *common.DBInfo, len(databases))
+	dbChan := make(chan *xutil.DBInfo, len(databases))
 	erChan := make(chan error, len(databases))
 	var wg sync.WaitGroup
 
@@ -122,12 +122,12 @@ func dumpCluster(ctx context.Context, dumpContext *ClusterDumpContext, stageDir 
 }
 
 // dumpDatabase executes pg_dump for a given database.
-func dumpDatabase(dumpContext *ClusterDumpContext, dbInfo *common.DBInfo, stageDir string, jobsWeights map[string]int) error {
+func dumpDatabase(dumpContext *ClusterDumpContext, dbInfo *xutil.DBInfo, stageDir string, jobsWeights map[string]int) error {
 	var err error
 
 	db := dbInfo.DatName
 
-	pgDump, err := common.GetExec(dumpContext.PgBinPath, "pg_dump")
+	pgDump, err := xutil.GetExec(dumpContext.PgBinPath, "pg_dump")
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func dumpDatabase(dumpContext *ClusterDumpContext, dbInfo *common.DBInfo, stageD
 	slog.Info("dump",
 		slog.String("status", "run"),
 		slog.String("dbname", dbInfo.DatName),
-		slog.String("dbsize", common.ByteCountSI(dbInfo.SizeBytes)),
+		slog.String("dbsize", xutil.ByteCountSI(dbInfo.SizeBytes)),
 		slog.Int("jobs", pgDumpJobs),
 	)
 
@@ -209,7 +209,7 @@ func writeGlobalsFile(dumpContext *ClusterDumpContext, path string) error {
 }
 
 func dumpGlobals(dumpContext *ClusterDumpContext) (sql, logs []byte, err error) {
-	pgDumpall, err := common.GetExec(dumpContext.PgBinPath, "pg_dumpall")
+	pgDumpall, err := xutil.GetExec(dumpContext.PgBinPath, "pg_dumpall")
 	if err != nil {
 		return nil, nil, err
 	}

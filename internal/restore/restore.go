@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/hashmap-kz/pgdump-each/internal/common"
+	"github.com/hashmap-kz/pgdump-each/internal/xutil"
 )
 
 type ClusterRestoreContext struct {
@@ -23,11 +23,11 @@ type ClusterRestoreContext struct {
 }
 
 func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) error {
-	if err := common.SetupEnv(ctx, restoreContext.ConnStr); err != nil {
+	if err := xutil.SetupEnv(ctx, restoreContext.ConnStr); err != nil {
 		return err
 	}
 
-	databases, err := common.GetDatabases(ctx, restoreContext.ConnStr)
+	databases, err := xutil.GetDatabases(ctx, restoreContext.ConnStr)
 	if err != nil {
 		return err
 	}
@@ -37,7 +37,7 @@ func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) 
 
 	inputPath := restoreContext.InputDir
 
-	dirs, err := common.GetDumpsInDir(inputPath)
+	dirs, err := xutil.GetDumpsInDir(inputPath)
 	if err != nil {
 		return err
 	}
@@ -45,7 +45,7 @@ func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) 
 		return fmt.Errorf("no dumps were found")
 	}
 
-	if err := common.CompareChecksums(inputPath); err != nil {
+	if err := xutil.CompareChecksums(inputPath); err != nil {
 		return err
 	}
 
@@ -62,7 +62,7 @@ func RunRestoreJobs(ctx context.Context, restoreContext *ClusterRestoreContext) 
 }
 
 func restoreGlobals(restoreContext *ClusterRestoreContext, inputPath string) error {
-	psql, err := common.GetExec(restoreContext.PgBinPath, "psql")
+	psql, err := xutil.GetExec(restoreContext.PgBinPath, "psql")
 	if err != nil {
 		return err
 	}
@@ -97,8 +97,8 @@ func restoreGlobals(restoreContext *ClusterRestoreContext, inputPath string) err
 	return nil
 }
 
-func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, dirs []*common.DBInfo) error {
-	jobsWeights, err := common.GetJobsWeights(ctx, dirs, restoreContext.ConnStr)
+func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, dirs []*xutil.DBInfo) error {
+	jobsWeights, err := xutil.GetJobsWeights(ctx, dirs, restoreContext.ConnStr)
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, 
 	)
 
 	workerCount := restoreContext.ParallelDBS
-	dbChan := make(chan *common.DBInfo, len(dirs))
+	dbChan := make(chan *xutil.DBInfo, len(dirs))
 	erChan := make(chan error, len(dirs))
 	var wg sync.WaitGroup
 
@@ -146,8 +146,8 @@ func restoreCluster(ctx context.Context, restoreContext *ClusterRestoreContext, 
 	return lastErr
 }
 
-func restoreDump(restoreContext *ClusterRestoreContext, dumpDirInfo *common.DBInfo, jobsWeights map[string]int) error {
-	pgRestore, err := common.GetExec(restoreContext.PgBinPath, "pg_restore")
+func restoreDump(restoreContext *ClusterRestoreContext, dumpDirInfo *xutil.DBInfo, jobsWeights map[string]int) error {
+	pgRestore, err := xutil.GetExec(restoreContext.PgBinPath, "pg_restore")
 	if err != nil {
 		return err
 	}
@@ -162,7 +162,7 @@ func restoreDump(restoreContext *ClusterRestoreContext, dumpDirInfo *common.DBIn
 	slog.Info("restore",
 		slog.String("status", "run"),
 		slog.String("dumpname", filepath.Base(dumpDir)),
-		slog.String("dumpsize", common.ByteCountSI(dumpDirInfo.SizeBytes)),
+		slog.String("dumpsize", xutil.ByteCountSI(dumpDirInfo.SizeBytes)),
 		slog.Int("jobs", pgDumpJobs),
 	)
 

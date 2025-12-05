@@ -4,10 +4,10 @@ import (
 	"context"
 	"log"
 
-	"github.com/hashmap-kz/pgdump-each/internal/common"
 	"github.com/hashmap-kz/pgdump-each/internal/dump"
 	"github.com/hashmap-kz/pgdump-each/internal/restore"
 	"github.com/hashmap-kz/pgdump-each/internal/version"
+	"github.com/hashmap-kz/pgdump-each/internal/xutil"
 
 	"github.com/spf13/cobra"
 )
@@ -56,7 +56,7 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 		Short: "Dump all databases",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			if err := common.SetupEnv(ctx, connStr); err != nil {
+			if err := xutil.SetupEnv(ctx, connStr); err != nil {
 				return err
 			}
 			return dump.RunDumpJobs(ctx, &dump.ClusterDumpContext{
@@ -81,7 +81,7 @@ Explicitly specify the path to PostgreSQL binaries (optional)
 		Short: "Restore all databases from input",
 		RunE: func(_ *cobra.Command, _ []string) error {
 			ctx := context.Background()
-			if err := common.SetupEnv(ctx, connStr); err != nil {
+			if err := xutil.SetupEnv(ctx, connStr); err != nil {
 				return err
 			}
 			return restore.RunRestoreJobs(ctx, &restore.ClusterRestoreContext{

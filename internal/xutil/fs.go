@@ -1,4 +1,4 @@
-package common
+package xutil
 
 import (
 	"os"
