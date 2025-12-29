@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/jackc/pgconn v1.14.3
-	github.com/jackc/pgx/v5 v5.7.6
+	github.com/jackc/pgx/v5 v5.8.0
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
 )
