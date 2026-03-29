@@ -37,13 +37,24 @@ func TestRestoreStage(t *testing.T) {
 	assert.Equal(t, 7, len(dumps))
 
 	// trying to restore
+	targetConnStr := "postgres://postgres:postgres@localhost:15433/postgres"
+
+	// quick check before
+	dbs, err := common.GetDatabases(context.Background(), targetConnStr)
+	assert.NoError(t, err)
+	assert.Equal(t, 0, len(dbs))
 
 	err = RunRestoreJobs(context.Background(), &ClusterRestoreContext{
-		ConnStr:     "postgres://postgres:postgres@localhost:15433/postgres",
+		ConnStr:     targetConnStr,
 		InputDir:    expectedPath,
 		ParallelDBS: 5,
 		LogDir:      "/tmp",
 	})
 
 	assert.NoError(t, err)
+
+	// quick check after
+	dbs, err = common.GetDatabases(context.Background(), targetConnStr)
+	assert.NoError(t, err)
+	assert.Equal(t, 7, len(dbs))
 }
